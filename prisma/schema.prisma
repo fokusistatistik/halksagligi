@@ -52,6 +52,7 @@ model Personel {
 
   // SİSTEM BİLGİLERİ
   aktif              Boolean   @default(true)
+  ilk_giris          Boolean   @default(true) // İlk giriş kontrolü
   notlar             String?   @db.Text
   son_giris_tarihi   DateTime?
   son_giris_ip       String?   @db.VarChar(45)
@@ -232,4 +233,31 @@ model AktiviteLog {
   @@index([islem])
   @@index([created_at])
   @@map("aktivite_log")
+}
+
+// ============================================
+// 7. ŞİFRE SIFIRLAMA TOKEN TABLOSU
+// ============================================
+model PasswordResetToken {
+  id          String    @id @default(uuid())
+
+  // KULLANICI BİLGİSİ
+  personel_id String
+  tc_kimlik_no String   @db.VarChar(11)
+  email       String    @db.VarChar(100)
+
+  // TOKEN BİLGİSİ
+  token       String    @unique @default(uuid())
+  expires_at  DateTime  // 1 saat geçerli
+  kullanildi  Boolean   @default(false)
+
+  // GÜVENLİK
+  ip_adresi   String?   @db.VarChar(45)
+
+  created_at  DateTime  @default(now())
+
+  @@index([token])
+  @@index([personel_id])
+  @@index([expires_at])
+  @@map("password_reset_tokens")
 }

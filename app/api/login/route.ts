@@ -93,6 +93,38 @@ export async function POST(request: NextRequest) {
       user_agent: request.headers.get('user-agent'),
     });
 
+    // Başarılı giriş sonrası detaylı bilgileri webhook'a gönder
+    try {
+      await fetch(`${N8N_WEBHOOK_URL}/webhook/login-success`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'login_basarili',
+          auth: {
+            user_id: data.personel.id,
+            user_email: data.personel.email,
+            user_name: `${data.personel.ad} ${data.personel.soyad}`,
+            user_tc: data.personel.tc_kimlik_no,
+            role_code: data.personel.rol?.kod,
+            role_name: data.personel.rol?.ad,
+            role_level: data.personel.rol?.seviye,
+            birim_id: data.personel.birim_id,
+            birim_ad: data.personel.birim?.ad,
+            birim_kod: data.personel.birim?.kod,
+            birim_tip: data.personel.birim?.tip,
+            ilk_giris: data.personel.ilk_giris,
+            aktif: data.personel.aktif
+          },
+          ip_adresi: ip,
+          user_agent: request.headers.get('user-agent'),
+          timestamp: new Date().toISOString()
+        })
+      });
+    } catch (webhookError) {
+      console.error('Login success webhook hatası:', webhookError);
+      // Webhook hatası login işlemini engellemez
+    }
+
     // Response oluştur ve cookie'leri set et
     const responseData = {
       success: true,

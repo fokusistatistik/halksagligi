@@ -1,6 +1,5 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { kullaniciWebhook } from "@/lib/webhook/client";
 
 export const authOptions: NextAuthOptions = {
   providers: [

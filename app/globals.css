@@ -10,30 +10,15 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-<<<<<<< HEAD
-    --primary: 352 94% 46%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 100% 20%;
-    --secondary-foreground: 0 0% 100%;
-=======
     --primary: 188 80% 39%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
->>>>>>> 688cb8399544cb48ad1e4bd218a7ee9d5f50d8fd
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-<<<<<<< HEAD
-    --destructive-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 352 94% 46%;
-    --radius: 0.5rem;
-  }
-=======
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
@@ -62,7 +47,6 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 188 75% 50%;
   }
->>>>>>> 688cb8399544cb48ad1e4bd218a7ee9d5f50d8fd
 }
 
 @layer base {
@@ -70,9 +54,6 @@
     @apply border-border;
   }
   body {
-<<<<<<< HEAD
-    @apply bg-muted font-sans text-foreground;
-=======
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
@@ -81,24 +62,11 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
->>>>>>> 688cb8399544cb48ad1e4bd218a7ee9d5f50d8fd
   }
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-<<<<<<< HEAD
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-muted;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded-lg;
-=======
   width: 8px;
   height: 8px;
 }
@@ -109,24 +77,12 @@
 
 ::-webkit-scrollbar-thumb {
   @apply bg-gray-400 rounded-full;
->>>>>>> 688cb8399544cb48ad1e4bd218a7ee9d5f50d8fd
 }
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-500;
 }
 
-<<<<<<< HEAD
-/* Print styles */
-@media print {
-  body {
-    @apply bg-white;
-  }
-  .no-print {
-    display: none !important;
-  }
-}
-=======
 /* Dark mode scrollbar */
 .dark ::-webkit-scrollbar-track {
   @apply bg-gray-800;
@@ -269,4 +225,3 @@ button,
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s ease-in-out infinite;
 }
->>>>>>> 688cb8399544cb48ad1e4bd218a7ee9d5f50d8fd

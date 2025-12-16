@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, hasPermission } from '@/lib/auth/permissions'
 import { prisma } from '@/lib/prisma'
 
-<<<<<<< HEAD
-export async function GET(request: NextRequest) {
-=======
 export async function GET(_request: NextRequest) {
->>>>>>> 688cb8399544cb48ad1e4bd218a7ee9d5f50d8fd
   try {
     const user = await getCurrentUser()
     if (!user || !(await hasPermission('rol.goruntule'))) {

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/options';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { logAktivite, getIpFromHeaders, getUserAgentFromHeaders } from '@/lib/log';
+import { getCurrentUser, canAccessSHMAltBirim } from '@/lib/auth/permissions';
 
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.fokusistatistik.com';
 
@@ -21,10 +24,27 @@ const veriGirisSchema = z.object({
 
 /**
  * GET /api/shm/veri-giris
- * Veri girişlerini listeler (filtreleme destekli)
+ * Veri girişlerini listeler (filtreleme ve birim bazlı yetkilendirme ile)
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Yetkisiz erişim' },
+        { status: 401 }
+      );
+    }
+
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Kullanıcı bulunamadı' },
+        { status: 404 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     const altBirimId = searchParams.get('alt_birim_id');
@@ -36,6 +56,28 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     const whereClause: any = {};
+
+    // Birim bazlı filtreleme - SHM çalışanları sadece kendi birimlerini görebilir
+    if (!['ADMIN', 'BASKAN', 'ISTATISTIKCI'].includes(user.rol.kod)) {
+      if (user.birim.tip === 'SHM') {
+        whereClause.shm_alt_birim = {
+          shm_birim_id: user.birim_id
+        };
+      } else {
+        // ASM veya diğer birimler SHM verisine erişemez
+        return NextResponse.json({
+          success: true,
+          data: [],
+          pagination: {
+            toplam: 0,
+            limit,
+            offset,
+            sayfa: 1,
+            toplamSayfa: 0
+          }
+        });
+      }
+    }
 
     if (altBirimId) whereClause.shm_alt_birim_id = altBirimId;
     if (personelId) whereClause.personel_id = personelId;
@@ -88,12 +130,38 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/shm/veri-giris
- * Yeni veri girişi oluşturur ve webhook'a gönderir
+ * Yeni veri girişi oluşturur ve webhook'a gönderir (birim bazlı yetkilendirme ile)
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Yetkisiz erişim' },
+        { status: 401 }
+      );
+    }
+
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Kullanıcı bulunamadı' },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
     const validated = veriGirisSchema.parse(body);
+
+    // Kullanıcının bu alt birime veri girişi yapma yetkisi var mı kontrol et
+    const canAccess = await canAccessSHMAltBirim(validated.shm_alt_birim_id);
+    if (!canAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Bu alt birime veri girişi yapma yetkiniz yok' },
+        { status: 403 }
+      );
+    }
 
     // Aynı gün aynı kişi aynı birimde kayıt var mı kontrol et
     const mevcutKayit = await prisma.sHMVeriGiris.findFirst({
@@ -106,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     if (mevcutKayit) {
       return NextResponse.json(
-        { error: 'Bu tarih için zaten veri girişi yapılmış' },
+        { success: false, error: 'Bu tarih için zaten veri girişi yapılmış' },
         { status: 400 }
       );
     }
@@ -116,20 +184,46 @@ export async function POST(request: NextRequest) {
       data: {
         ...validated,
         tarih: new Date(validated.tarih),
-        onay_durumu: 'BEKLEMEDE'
+        onay_durumu: 'BEKLEMEDE',
+        created_by_id: user.id
       },
       include: {
-        shm_alt_birim: true
+        shm_alt_birim: {
+          include: {
+            shm_birim: true
+          }
+        }
       }
     });
 
-    // Webhook'a gönder (async, blocking değil)
+    // Webhook'a gönder (async, blocking değil) - TÜM AUTH BİLGİLERİ İLE
     try {
       const webhookResponse = await fetch(`${N8N_WEBHOOK_URL}/webhook/shm-veri-giris`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          event: 'shm_veri_giris_olusturuldu',
           veri_giris: veriGiris,
+          auth: {
+            user_id: user.id,
+            user_email: user.email,
+            user_name: `${user.ad} ${user.soyad}`,
+            user_tc: user.tc_kimlik_no,
+            role_code: user.rol.kod,
+            role_name: user.rol.ad,
+            role_level: user.rol.seviye,
+            birim_id: user.birim_id,
+            birim_ad: user.birim.ad,
+            birim_kod: user.birim.kod,
+            birim_tip: user.birim.tip,
+            permissions: user.rol.yetkiler.map((ry: any) => ({
+              kod: ry.yetki.kod,
+              ad: ry.yetki.ad,
+              kategori: ry.yetki.kategori
+            }))
+          },
+          ip_adresi: getIpFromHeaders(request.headers),
+          user_agent: getUserAgentFromHeaders(request.headers),
           timestamp: new Date().toISOString()
         })
       });
@@ -151,7 +245,8 @@ export async function POST(request: NextRequest) {
 
     // Aktivite logu
     await logAktivite({
-      personel_id: validated.personel_id,
+      personel_id: user.id,
+      personel_email: user.email,
       islem: 'shm.veri_giris.olustur',
       tablo: 'shm_veri_giris',
       kayit_id: veriGiris.id,
@@ -169,15 +264,15 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Veri giriş hatası:', error);
 
-    if (error.errors) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Geçersiz veri', details: error.errors },
+        { success: false, error: 'Geçersiz veri', details: error.errors },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { error: error.message || 'Veri girişi oluşturulamadı' },
+      { success: false, error: error.message || 'Veri girişi oluşturulamadı' },
       { status: 500 }
     );
   }

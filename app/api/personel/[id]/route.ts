@@ -5,11 +5,7 @@ import { logAktivite, getIpFromHeaders, getUserAgentFromHeaders } from '@/lib/lo
 import bcrypt from 'bcryptjs'
 
 export async function GET(
-<<<<<<< HEAD
-  request: NextRequest,
-=======
   _request: NextRequest,
->>>>>>> 688cb8399544cb48ad1e4bd218a7ee9d5f50d8fd
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

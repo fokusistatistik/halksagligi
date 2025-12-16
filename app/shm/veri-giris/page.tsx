@@ -70,13 +70,6 @@ export default function SHMVeriGirisPage() {
     }));
   };
 
-  const handleBransChange = (bransAdi: string, deger: string) => {
-    setBransVerileri(prev => ({
-      ...prev,
-      [bransAdi]: deger
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');

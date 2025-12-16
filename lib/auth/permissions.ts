@@ -169,3 +169,84 @@ export async function requireAdmin() {
     throw new Error('Forbidden: Sadece admin erişebilir')
   }
 }
+
+/**
+ * Get birim filter for queries
+ * Returns birim_id filter if user should be restricted to their own unit
+ * Returns undefined if user can see all units
+ */
+export async function getBirimFilter(): Promise<{ birim_id?: string } | undefined> {
+  const user = await getCurrentUser()
+  if (!user) return undefined
+
+  // Admin, Başkan, ve İstatistikçi tüm birimleri görebilir
+  if (['ADMIN', 'BASKAN', 'ISTATISTIKCI'].includes(user.rol.kod)) {
+    return {} // No filter - can see all
+  }
+
+  // Diğer roller sadece kendi birimlerini görebilir
+  return { birim_id: user.birim_id }
+}
+
+/**
+ * Check if user is restricted to their own unit
+ */
+export async function isRestrictedToOwnBirim(): Promise<boolean> {
+  const user = await getCurrentUser()
+  if (!user) return true
+
+  // Admin, Başkan, ve İstatistikçi kısıtlı değil
+  return !['ADMIN', 'BASKAN', 'ISTATISTIKCI'].includes(user.rol.kod)
+}
+
+/**
+ * Get SHM data filter based on user's unit
+ * For SHM staff: only their SHM's sub-units
+ * For admins: all sub-units
+ */
+export async function getSHMDataFilter() {
+  const user = await getCurrentUser()
+  if (!user) return { shm_birim_id: 'none' } // Return impossible filter
+
+  // Admin, Başkan, İstatistikçi - tüm SHM verilerini görebilir
+  if (['ADMIN', 'BASKAN', 'ISTATISTIKCI'].includes(user.rol.kod)) {
+    return {} // No filter
+  }
+
+  // SHM çalışanı - sadece kendi SHM'sinin alt birimlerini görebilir
+  // Kullanıcının biriminin tipi SHM ise
+  if (user.birim.tip === 'SHM') {
+    return {
+      shm_alt_birim: {
+        shm_birim_id: user.birim_id
+      }
+    }
+  }
+
+  // ASM veya diğer birim tipleri SHM verisine erişemez
+  return { shm_birim_id: 'none' } // Return impossible filter
+}
+
+/**
+ * Validate that user can create/edit data for a specific SHM alt birim
+ */
+export async function canAccessSHMAltBirim(altBirimId: string): Promise<boolean> {
+  const user = await getCurrentUser()
+  if (!user) return false
+
+  // Admin, Başkan, İstatistikçi - tüm alt birimlere erişebilir
+  if (['ADMIN', 'BASKAN', 'ISTATISTIKCI'].includes(user.rol.kod)) {
+    return true
+  }
+
+  // Alt birimin hangi SHM'ye ait olduğunu kontrol et
+  const altBirim = await prisma.sHMAltBirim.findUnique({
+    where: { id: altBirimId },
+    select: { shm_birim_id: true }
+  })
+
+  if (!altBirim) return false
+
+  // Kullanıcının birimi ile eşleşiyor mu?
+  return altBirim.shm_birim_id === user.birim_id
+}

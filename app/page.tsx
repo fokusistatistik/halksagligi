@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2 } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogIn, AlertCircle, Building2 } from 'lucide-react';
+import { LogIn, AlertCircle } from 'lucide-react';
 import PasswordInput from '@/components/password-input';
 
 export default function LoginPage() {

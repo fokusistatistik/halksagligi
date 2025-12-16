@@ -262,7 +262,7 @@ async function main() {
     }
   })
 
-  const asmMerkez = await prisma.birim.upsert({
+  await prisma.birim.upsert({
     where: { kod: 'ASM-MERKEZ' },
     update: {},
     create: {
@@ -311,7 +311,7 @@ async function main() {
   const adminRol = createdRoller.find(r => r.kod === 'ADMIN')
   const hashedPassword = await bcrypt.hash('Eb0302174.', 10)
 
-  const adminUser = await prisma.personel.upsert({
+  await prisma.personel.upsert({
     where: { tc_kimlik_no: '17422776208' },
     update: {},
     create: {

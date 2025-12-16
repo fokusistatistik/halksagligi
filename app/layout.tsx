@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Kocaeli İSM - Görev Yönetim Sistemi',
@@ -60,7 +57,7 @@ export default function RootLayout({
         <link rel="icon" href="https://static.fokusistatistik.com/resimler/favicon.png" />
         <link rel="shortcut icon" href="https://static.fokusistatistik.com/resimler/favicon.png" />
       </head>
-      <body className={inter.className}>
+      <body className="font-sans">
         {children}
       </body>
     </html>

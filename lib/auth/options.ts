@@ -18,17 +18,17 @@ export const authOptions: NextAuthOptions = {
       id: 'credentials',
       name: 'Credentials',
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        tc_kimlik_no: { label: 'TC Kimlik No', type: 'text' },
         password: { label: 'Şifre', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email ve şifre gereklidir');
+        if (!credentials?.tc_kimlik_no || !credentials?.password) {
+          throw new Error('TC Kimlik No ve şifre gereklidir');
         }
 
         // Kullanıcıyı bul
         const personel = await prisma.personel.findUnique({
-          where: { email: credentials.email },
+          where: { tc_kimlik_no: credentials.tc_kimlik_no },
           include: {
             rol: {
               include: {

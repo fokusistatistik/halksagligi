@@ -45,7 +45,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="HSB Görev" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#E30613" />
+        <meta name="theme-color" content="#14a0b5" />
 
         {/* Apple Touch Icons */}
         <link rel="apple-touch-icon" href="https://static.fokusistatistik.com/resimler/favicon.png" />

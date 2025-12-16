@@ -23,14 +23,18 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="text-center">
-        <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-          <Building2 className="w-10 h-10 text-white" />
+        <div className="mx-auto mb-6">
+          <img
+            src="https://static.fokusistatistik.com/resimler/kism.png"
+            alt="Kocaeli İl Sağlık Müdürlüğü"
+            className="h-24 mx-auto"
+          />
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Kocaeli İl Sağlık Müdürlüğü
         </h1>
-        <p className="text-gray-600 mb-6">Görev Yönetim Sistemi</p>
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p className="text-gray-600 mb-6">Halk Sağlığı Görev Yönetim Sistemi</p>
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p className="mt-4 text-sm text-gray-500">Yükleniyor...</p>
       </div>
     </div>

@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    email: '',
+    tc_kimlik_no: '',
     password: '',
   });
 
@@ -64,19 +64,23 @@ export default function LoginPage() {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Building2 className="w-10 h-10 text-white" />
+          <div className="mx-auto mb-4">
+            <img
+              src="https://static.fokusistatistik.com/resimler/kism.png"
+              alt="Kocaeli İl Sağlık Müdürlüğü"
+              className="h-24 mx-auto"
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Kocaeli İl Sağlık Müdürlüğü
           </h1>
-          <p className="text-gray-600">Görev Yönetim Sistemi</p>
+          <p className="text-gray-600">Halk Sağlığı Görev Yönetim Sistemi</p>
         </div>
 
         {/* Login Card */}
         <div className="bg-white rounded-xl shadow-xl p-8">
           <div className="flex items-center gap-3 mb-6">
-            <LogIn className="w-6 h-6 text-blue-600" />
+            <LogIn className="w-6 h-6 text-primary" />
             <h2 className="text-2xl font-bold text-gray-900">Giriş Yap</h2>
           </div>
 
@@ -89,20 +93,22 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Adresi
+              <label htmlFor="tc_kimlik_no" className="block text-sm font-medium text-gray-700 mb-2">
+                TC Kimlik No
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
+                id="tc_kimlik_no"
+                name="tc_kimlik_no"
+                type="text"
+                value={formData.tc_kimlik_no}
                 onChange={handleChange}
-                placeholder="ornek@saglik.gov.tr"
+                placeholder="11 haneli TC Kimlik No"
                 required
-                autoComplete="email"
+                maxLength={11}
+                pattern="[0-9]{11}"
+                autoComplete="username"
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                         focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
                          transition-all"
               />
             </div>
@@ -124,7 +130,7 @@ export default function LoginPage() {
             <div className="flex justify-end">
               <Link
                 href="/sifre-sifirla"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                className="text-sm text-primary hover:opacity-80 font-medium hover:underline"
               >
                 Şifremi Unuttum
               </Link>
@@ -133,8 +139,8 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium
-                       hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              className="w-full bg-primary text-white py-3 px-4 rounded-lg font-medium
+                       hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
                        disabled:opacity-50 disabled:cursor-not-allowed transition-all
                        shadow-lg hover:shadow-xl"
             >

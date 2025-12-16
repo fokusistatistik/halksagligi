@@ -7,7 +7,7 @@ const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.fokusistatis
 
 // Login validation schema
 const loginSchema = z.object({
-  email: z.string().email('Geçerli bir email adresi giriniz'),
+  tc_kimlik_no: z.string().regex(/^\d{11}$/, 'Geçerli bir TC Kimlik No giriniz (11 hane)'),
   password: z.string().min(1, 'Şifre gereklidir'),
 });
 
@@ -30,10 +30,9 @@ export async function POST(request: NextRequest) {
     const rateLimit = checkRateLimit(ip, 'login', RATE_LIMITS.LOGIN);
     if (!rateLimit.allowed) {
       await logAktivite({
-        personel_email: validated.email,
         islem: 'login.rate_limit',
         tablo: 'personel',
-        aciklama: `Login rate limit aşıldı: ${ip}`,
+        aciklama: `Login rate limit aşıldı: TC ${validated.tc_kimlik_no}, IP: ${ip}`,
         ip_adresi: ip,
         user_agent: request.headers.get('user-agent'),
       });
@@ -69,10 +68,9 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       // Log: Başarısız login
       await logAktivite({
-        personel_email: validated.email,
         islem: 'login.basarisiz',
         tablo: 'personel',
-        aciklama: `Başarısız giriş denemesi: ${data.error || 'Bilinmeyen hata'}`,
+        aciklama: `Başarısız giriş denemesi: TC ${validated.tc_kimlik_no} - ${data.error || 'Bilinmeyen hata'}`,
         ip_adresi: ip,
         user_agent: request.headers.get('user-agent'),
       });

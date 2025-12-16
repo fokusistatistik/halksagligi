@@ -7,10 +7,10 @@ import { prisma } from '@/lib/prisma';
  */
 export async function getCurrentUser() {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.email) return null
+  if (!session?.user?.tc_kimlik_no) return null
 
   const user = await prisma.personel.findUnique({
-    where: { email: session.user.email },
+    where: { tc_kimlik_no: session.user.tc_kimlik_no },
     include: {
       rol: {
         include: {

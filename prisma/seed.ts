@@ -309,13 +309,13 @@ async function main() {
   console.log('👤 Admin kullanıcısı oluşturuluyor...')
 
   const adminRol = createdRoller.find(r => r.kod === 'ADMIN')
-  const hashedPassword = await bcrypt.hash('admin123', 10)
+  const hashedPassword = await bcrypt.hash('Eb0302174.', 10)
 
   const adminUser = await prisma.personel.upsert({
-    where: { email: 'admin@saglik.gov.tr' },
+    where: { tc_kimlik_no: '17422776208' },
     update: {},
     create: {
-      tc_kimlik_no: '12345678901',
+      tc_kimlik_no: '17422776208',
       ad: 'Admin',
       soyad: 'Kullanıcı',
       email: 'admin@saglik.gov.tr',
@@ -331,8 +331,8 @@ async function main() {
   console.log('✅ Admin kullanıcısı oluşturuldu')
   console.log('')
   console.log('🎉 Seed data tamamlandı!')
-  console.log('📧 Admin Email: admin@saglik.gov.tr')
-  console.log('🔒 Admin Şifre: admin123')
+  console.log('🆔 Admin TC Kimlik No: 17422776208')
+  console.log('🔒 Admin Şifre: Eb0302174.')
   console.log('')
 }
 

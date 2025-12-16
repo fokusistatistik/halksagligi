@@ -37,7 +37,28 @@ export default function RootLayout({
     <html lang="tr" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
+
+        {/* PWA Meta Tags */}
+        <meta name="application-name" content="HSB Görev" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="HSB Görev" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#E30613" />
+
+        {/* Apple Touch Icons */}
+        <link rel="apple-touch-icon" href="https://static.fokusistatistik.com/resimler/favicon.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="https://static.fokusistatistik.com/resimler/favicon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="https://static.fokusistatistik.com/resimler/favicon.png" />
+        <link rel="apple-touch-icon" sizes="167x167" href="https://static.fokusistatistik.com/resimler/favicon.png" />
+
+        {/* Manifest */}
+        <link rel="manifest" href="/manifest.json" />
+
+        {/* Favicon */}
+        <link rel="icon" href="https://static.fokusistatistik.com/resimler/favicon.png" />
+        <link rel="shortcut icon" href="https://static.fokusistatistik.com/resimler/favicon.png" />
       </head>
       <body className={inter.className}>
         {children}

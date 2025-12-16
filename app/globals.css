@@ -102,3 +102,126 @@
     @apply bg-white text-black;
   }
 }
+
+/* ===================================
+   MOBILE OPTIMIZATIONS
+   =================================== */
+
+/* Touch-friendly tap targets */
+@media (pointer: coarse) {
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Prevent zoom on input focus (iOS) */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
+/* iOS safe area support */
+.safe-area-padding {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-padding-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-margin {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+/* Mobile-specific utilities */
+@media (max-width: 768px) {
+  .mobile-full-width {
+    width: 100%;
+  }
+
+  .mobile-text-center {
+    text-align: center;
+  }
+
+  .mobile-hidden {
+    display: none;
+  }
+}
+
+/* Desktop-specific utilities */
+@media (min-width: 769px) {
+  .desktop-hidden {
+    display: none;
+  }
+}
+
+/* Prevent pull-to-refresh overscroll on mobile */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Smooth scrolling */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Disable text selection on buttons and interactive elements */
+button,
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Better touch scrolling on iOS */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile navigation bottom bar */
+.mobile-nav-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+  @apply outline-2 outline-offset-2 outline-blue-600;
+}
+
+/* Loading skeleton animation */
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, canManagePersonel } from '@/lib/auth/permissions'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
 import { logAktivite, getIpFromHeaders, getUserAgentFromHeaders } from '@/lib/log'
 import bcrypt from 'bcryptjs'
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

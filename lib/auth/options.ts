@@ -67,7 +67,7 @@ export const authOptions: NextAuthOptions = {
           where: { id: personel.id },
           data: {
             son_giris_tarihi: new Date(),
-            son_giris_ip: credentials.ip || null,
+            // IP tracking yapılacaksa ayrı bir middleware'de yapılmalı
           },
         });
 

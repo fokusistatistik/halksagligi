@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, hasPermission } from '@/lib/auth/permissions'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
 import { logAktivite, getIpFromHeaders, getUserAgentFromHeaders } from '@/lib/log'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'

@@ -1,4 +1,4 @@
-import prisma from './prisma'
+import { prisma } from './prisma'
 
 export interface LogActivityParams {
   personel_id?: string

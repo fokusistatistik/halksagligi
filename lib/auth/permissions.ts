@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from './options';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Get the current user session with full details

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn, AlertCircle } from 'lucide-react';
@@ -26,34 +27,21 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      const result = await signIn('credentials', {
+        tc_kimlik_no: formData.tc_kimlik_no,
+        password: formData.password,
+        redirect: false,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Giriş başarısız');
-      }
-
-      // Token'ı localStorage'a kaydet
-      if (data.token) {
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.personel));
-      }
-
-      // İlk giriş kontrolü
-      if (data.ilk_giris) {
-        // İlk giriş ise şifre değiştirme sayfasına yönlendir
-        router.push('/sifre-degistir');
-      } else {
-        // Normal giriş, ana sayfaya yönlendir
+      if (result?.error) {
+        setError(result.error);
+      } else if (result?.ok) {
+        // Başarılı giriş - ana sayfaya yönlendir
         router.push('/');
+        router.refresh();
       }
     } catch (err: any) {
-      setError(err.message || 'Bir hata oluştu');
+      setError(err.message || 'Giriş başarısız');
     } finally {
       setLoading(false);
     }

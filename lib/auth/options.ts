@@ -1,61 +1,66 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "E-posta", type: "email", placeholder: "ornek@saglik.gov.tr" },
+        tc_kimlik_no: { label: "TC Kimlik No", type: "text", placeholder: "11 haneli TC Kimlik No" },
         password: { label: "Şifre", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("E-posta ve şifre gereklidir");
+        if (!credentials?.tc_kimlik_no || !credentials?.password) {
+          throw new Error("TC Kimlik No ve şifre gereklidir");
         }
 
         try {
-          // Webhook ile kullanıcı doğrulama
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_WEBHOOK_BASE_URL}/kullanici-giris`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(process.env.WEBHOOK_API_KEY && {
-                  "X-API-Key": process.env.WEBHOOK_API_KEY,
-                }),
-              },
-              body: JSON.stringify({
-                email: credentials.email,
-                password: credentials.password,
-              }),
+          // Kullanıcıyı veritabanından bul
+          const personel = await prisma.personel.findUnique({
+            where: { tc_kimlik_no: credentials.tc_kimlik_no },
+            include: {
+              rol: true,
+              birim: true
             }
-          );
+          });
 
-          if (!response.ok) {
-            throw new Error("Giriş başarısız");
+          if (!personel) {
+            throw new Error("Geçersiz TC Kimlik No veya şifre");
           }
 
-          const data = await response.json();
-
-          if (data.success && data.data) {
-            return {
-              id: data.data.id,
-              name: data.data.name,
-              email: data.data.email,
-              tc_kimlik_no: data.data.tc_kimlik_no || '',
-              rol: data.data.rol || data.data.role,
-              birim: data.data.birim,
-              ilk_giris: data.data.ilk_giris || false,
-              profil_foto_url: data.data.profil_foto_url || null,
-            };
+          // Aktif mi kontrol et
+          if (!personel.aktif) {
+            throw new Error("Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin.");
           }
 
-          return null;
-        } catch (_error) {
-          console.error("Auth error:", _error);
-          return null;
+          // Şifre kontrolü
+          const isPasswordValid = await bcrypt.compare(credentials.password, personel.password);
+
+          if (!isPasswordValid) {
+            throw new Error("Geçersiz TC Kimlik No veya şifre");
+          }
+
+          // Son giriş tarihini güncelle
+          await prisma.personel.update({
+            where: { id: personel.id },
+            data: { son_giris_tarihi: new Date() }
+          });
+
+          return {
+            id: personel.id,
+            name: `${personel.ad} ${personel.soyad}`,
+            email: personel.email,
+            tc_kimlik_no: personel.tc_kimlik_no,
+            rol: personel.rol,
+            birim: personel.birim,
+            ilk_giris: personel.ilk_giris,
+            profil_foto_url: personel.profil_foto_url,
+          };
+        } catch (error) {
+          console.error("Auth error:", error);
+          throw error;
         }
       },
     }),

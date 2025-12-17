@@ -15,7 +15,7 @@ const publicPaths = [
   '/login',
   '/sifre-sifirla',
   '/sifre-yenile',
-  '/api/login',
+  '/api/auth', // NextAuth endpoints
   '/api/sifre-sifirla',
   '/api/sifre-yenile',
 ];

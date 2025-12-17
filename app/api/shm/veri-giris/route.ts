@@ -3,21 +3,17 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { logAktivite, getIpFromHeaders, getUserAgentFromHeaders } from '@/lib/log';
-import { getCurrentUser, canAccessSHMAltBirim } from '@/lib/auth/permissions';
+import { logAktivite } from '@/lib/log';
+import { getCurrentUser } from '@/lib/auth/permissions';
 
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.fokusistatistik.com';
 
-// Veri giriş validation schema
+// Veri giriş validation schema - YENİ YAPI
 const veriGirisSchema = z.object({
-  shm_alt_birim_id: z.string().uuid('Geçerli bir alt birim seçiniz'),
+  birim_id: z.string().uuid('Geçerli bir birim seçiniz'),
   personel_id: z.string().uuid('Geçerli bir personel ID giriniz'),
   tarih: z.string().refine((val) => !isNaN(Date.parse(val)), 'Geçerli bir tarih giriniz'),
-  poliklinik_islem_sayisi: z.number().int().min(0, 'İşlem sayısı negatif olamaz'),
-  poliklinik_kontrol_sayisi: z.number().int().min(0, 'Kontrol sayısı negatif olamaz'),
-  brans_verileri: z.record(z.any()).optional(),
-  sorumlu_adi: z.string().optional(),
-  sorumlu_unvan: z.string().optional(),
+  veri: z.record(z.any()).optional(), // Esnek veri yapısı
   aciklama: z.string().optional(),
   notlar: z.string().optional()
 });
@@ -47,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
 
-    const altBirimId = searchParams.get('alt_birim_id');
+    const birimId = searchParams.get('birim_id');
     const personelId = searchParams.get('personel_id');
     const baslangicTarihi = searchParams.get('baslangic_tarihi');
     const bitisTarihi = searchParams.get('bitis_tarihi');
@@ -57,14 +53,28 @@ export async function GET(request: NextRequest) {
 
     const whereClause: any = {};
 
-    // Birim bazlı filtreleme - SHM çalışanları sadece kendi birimlerini görebilir
-    if (!['ADMIN', 'BASKAN', 'ISTATISTIKCI'].includes(user.rol.kod)) {
-      if (user.birim.tip === 'SHM') {
-        whereClause.shm_alt_birim = {
-          shm_birim_id: user.birim_id
+    // Birim bazlı filtreleme - Dış birim çalışanları sadece kendi birimlerini görebilir
+    if (!['ADMIN', 'BASKAN', 'ANALIST'].includes(user.rol.kod)) {
+      if (user.birim.tip === 'DIS_BIRIM') {
+        // Dış birimde PERSONEL: Sadece kendi verileri
+        if (user.rol.kod === 'PERSONEL') {
+          whereClause.birim_id = user.birim_id;
+          whereClause.personel_id = user.id;
+        } else {
+          // BIRIM_YONETICISI: Birimin tüm verileri
+          whereClause.birim_id = user.birim_id;
+        }
+      } else if (user.birim.tip === 'MUDURLUK') {
+        // Müdürlük biriminde: Bağlı dış birimlerin verileri
+        const bagliBirimler = await prisma.birim.findMany({
+          where: { ust_birim_id: user.birim_id },
+          select: { id: true }
+        });
+        whereClause.birim_id = {
+          in: bagliBirimler.map(b => b.id)
         };
       } else {
-        // ASM veya diğer birimler SHM verisine erişemez
+        // Diğer durumlar: Erişim yok
         return NextResponse.json({
           success: true,
           data: [],
@@ -79,7 +89,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (altBirimId) whereClause.shm_alt_birim_id = altBirimId;
+    if (birimId) whereClause.birim_id = birimId;
     if (personelId) whereClause.personel_id = personelId;
     if (onayDurumu) whereClause.onay_durumu = onayDurumu;
 
@@ -93,12 +103,13 @@ export async function GET(request: NextRequest) {
       prisma.sHMVeriGiris.findMany({
         where: whereClause,
         include: {
-          shm_alt_birim: {
+          birim: {
             select: {
               id: true,
               ad: true,
               kod: true,
-              tip: true
+              tip: true,
+              dis_birim_tip: true
             }
           }
         },
@@ -154,19 +165,48 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = veriGirisSchema.parse(body);
 
-    // Kullanıcının bu alt birime veri girişi yapma yetkisi var mı kontrol et
-    const canAccess = await canAccessSHMAltBirim(validated.shm_alt_birim_id);
-    if (!canAccess) {
+    // Kullanıcının bu birime veri girişi yapma yetkisi var mı kontrol et
+    const birim = await prisma.birim.findUnique({
+      where: { id: validated.birim_id }
+    });
+
+    if (!birim) {
       return NextResponse.json(
-        { success: false, error: 'Bu alt birime veri girişi yapma yetkiniz yok' },
-        { status: 403 }
+        { success: false, error: 'Birim bulunamadı' },
+        { status: 404 }
       );
+    }
+
+    // Yetki kontrolü
+    if (!['ADMIN', 'BASKAN', 'ANALIST'].includes(user.rol.kod)) {
+      if (user.birim.tip === 'DIS_BIRIM') {
+        // Dış birimde sadece kendi birimine veri girebilir
+        if (validated.birim_id !== user.birim_id) {
+          return NextResponse.json(
+            { success: false, error: 'Bu birime veri girişi yapma yetkiniz yok' },
+            { status: 403 }
+          );
+        }
+      } else if (user.birim.tip === 'MUDURLUK') {
+        // Müdürlük biriminde bağlı dış birimlere veri girebilir
+        if (birim.ust_birim_id !== user.birim_id) {
+          return NextResponse.json(
+            { success: false, error: 'Bu birime veri girişi yapma yetkiniz yok' },
+            { status: 403 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { success: false, error: 'Veri girişi yapma yetkiniz yok' },
+          { status: 403 }
+        );
+      }
     }
 
     // Aynı gün aynı kişi aynı birimde kayıt var mı kontrol et
     const mevcutKayit = await prisma.sHMVeriGiris.findFirst({
       where: {
-        shm_alt_birim_id: validated.shm_alt_birim_id,
+        birim_id: validated.birim_id,
         personel_id: validated.personel_id,
         tarih: new Date(validated.tarih)
       }
@@ -182,27 +222,35 @@ export async function POST(request: NextRequest) {
     // Veri girişini oluştur
     const veriGiris = await prisma.sHMVeriGiris.create({
       data: {
-        ...validated,
+        birim_id: validated.birim_id,
+        personel_id: validated.personel_id,
         tarih: new Date(validated.tarih),
+        veri: validated.veri as any,
+        aciklama: validated.aciklama,
+        notlar: validated.notlar,
         onay_durumu: 'BEKLEMEDE',
         created_by_id: user.id
       },
       include: {
-        shm_alt_birim: {
-          include: {
-            shm_birim: true
+        birim: {
+          select: {
+            id: true,
+            ad: true,
+            kod: true,
+            tip: true,
+            dis_birim_tip: true
           }
         }
       }
     });
 
-    // Webhook'a gönder (async, blocking değil) - TÜM AUTH BİLGİLERİ İLE
+    // Webhook'a gönder (async, blocking değil)
     try {
       const webhookResponse = await fetch(`${N8N_WEBHOOK_URL}/webhook/shm-veri-giris`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event: 'shm_veri_giris_olusturuldu',
+          event: 'veri_giris_olusturuldu',
           veri_giris: veriGiris,
           auth: {
             user_id: user.id,
@@ -222,8 +270,6 @@ export async function POST(request: NextRequest) {
               kategori: ry.yetki.kategori
             }))
           },
-          ip_adresi: getIpFromHeaders(request.headers),
-          user_agent: getUserAgentFromHeaders(request.headers),
           timestamp: new Date().toISOString()
         })
       });
@@ -247,12 +293,10 @@ export async function POST(request: NextRequest) {
     await logAktivite({
       personel_id: user.id,
       personel_email: user.email,
-      islem: 'shm.veri_giris.olustur',
+      islem: 'veri_giris.olustur',
       tablo: 'shm_veri_giris',
       kayit_id: veriGiris.id,
-      yeni_veri: veriGiris,
-      ip_adresi: getIpFromHeaders(request.headers),
-      user_agent: getUserAgentFromHeaders(request.headers)
+      aciklama: `Veri girişi oluşturuldu: ${birim.ad} - ${new Date(validated.tarih).toLocaleDateString('tr-TR')}`
     });
 
     return NextResponse.json({

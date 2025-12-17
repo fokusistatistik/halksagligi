@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, hasPermission } from '@/lib/auth/permissions'
 import { prisma } from '@/lib/prisma'
-import { logAktivite, getIpFromHeaders, getUserAgentFromHeaders } from '@/lib/log'
+import { logAktivite } from '@/lib/log'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -201,10 +201,7 @@ export async function POST(request: NextRequest) {
       islem: 'personel.ekle',
       tablo: 'personel',
       kayit_id: yeniPersonel.id,
-      yeni_veri: yeniPersonel,
       aciklama: `Yeni personel eklendi: ${yeniPersonel.ad} ${yeniPersonel.soyad}`,
-      ip_adresi: getIpFromHeaders(request.headers),
-      user_agent: getUserAgentFromHeaders(request.headers),
     })
 
     // Şifreyi çıkar

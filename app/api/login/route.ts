@@ -33,8 +33,6 @@ export async function POST(request: NextRequest) {
         islem: 'login.rate_limit',
         tablo: 'personel',
         aciklama: `Login rate limit aşıldı: TC ${validated.tc_kimlik_no}, IP: ${ip}`,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
       });
 
       return NextResponse.json(
@@ -71,8 +69,6 @@ export async function POST(request: NextRequest) {
         islem: 'login.basarisiz',
         tablo: 'personel',
         aciklama: `Başarısız giriş denemesi: TC ${validated.tc_kimlik_no} - ${data.error || 'Bilinmeyen hata'}`,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
       });
 
       return NextResponse.json(
@@ -89,8 +85,6 @@ export async function POST(request: NextRequest) {
       tablo: 'personel',
       kayit_id: data.personel.id,
       aciklama: `Başarılı giriş${data.personel.ilk_giris ? ' (İlk giriş)' : ''}`,
-      ip_adresi: ip,
-      user_agent: request.headers.get('user-agent'),
     });
 
     // Başarılı giriş sonrası detaylı bilgileri webhook'a gönder

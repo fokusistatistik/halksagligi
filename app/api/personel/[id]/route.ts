@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, canManagePersonel } from '@/lib/auth/permissions'
 import { prisma } from '@/lib/prisma'
-import { logAktivite, getIpFromHeaders, getUserAgentFromHeaders } from '@/lib/log'
+import { logAktivite } from '@/lib/log'
 import bcrypt from 'bcryptjs'
 
 export async function GET(
@@ -61,10 +61,7 @@ export async function PUT(
       islem: 'personel.guncelle',
       tablo: 'personel',
       kayit_id: id,
-      yeni_veri: updatedPersonel,
       aciklama: `Personel güncellendi: ${updatedPersonel.ad} ${updatedPersonel.soyad}`,
-      ip_adresi: getIpFromHeaders(request.headers),
-      user_agent: getUserAgentFromHeaders(request.headers),
     })
 
     const { password: _, ...safe } = updatedPersonel
@@ -75,7 +72,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -96,8 +93,6 @@ export async function DELETE(
       tablo: 'personel',
       kayit_id: id,
       aciklama: `Personel silindi`,
-      ip_adresi: getIpFromHeaders(request.headers),
-      user_agent: getUserAgentFromHeaders(request.headers),
     })
 
     return NextResponse.json({ success: true, message: 'Personel silindi' })

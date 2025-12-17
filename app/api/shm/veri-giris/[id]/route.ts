@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { logAktivite, getIpFromHeaders, getUserAgentFromHeaders } from '@/lib/log';
+import { logAktivite } from '@/lib/log';
+import { getCurrentUser } from '@/lib/auth/permissions';
 
 const updateSchema = z.object({
-  poliklinik_islem_sayisi: z.number().int().min(0).optional(),
-  poliklinik_kontrol_sayisi: z.number().int().min(0).optional(),
-  brans_verileri: z.record(z.any()).optional(),
-  sorumlu_adi: z.string().optional(),
-  sorumlu_unvan: z.string().optional(),
+  veri: z.record(z.any()).optional(),
   aciklama: z.string().optional(),
   notlar: z.string().optional()
 });
@@ -25,7 +22,15 @@ export async function GET(
     const veriGiris = await prisma.sHMVeriGiris.findUnique({
       where: { id: params.id },
       include: {
-        shm_alt_birim: true
+        birim: {
+          select: {
+            id: true,
+            ad: true,
+            kod: true,
+            tip: true,
+            dis_birim_tip: true
+          }
+        }
       }
     });
 
@@ -79,24 +84,36 @@ export async function PUT(
       );
     }
 
+    const user = await getCurrentUser();
+
     const updated = await prisma.sHMVeriGiris.update({
       where: { id: params.id },
-      data: validated,
+      data: {
+        ...validated,
+        veri: validated.veri as any,
+        updated_by_id: user?.id
+      },
       include: {
-        shm_alt_birim: true
+        birim: {
+          select: {
+            id: true,
+            ad: true,
+            kod: true,
+            tip: true,
+            dis_birim_tip: true
+          }
+        }
       }
     });
 
     // Aktivite logu
     await logAktivite({
-      personel_id: mevcutKayit.personel_id,
-      islem: 'shm.veri_giris.guncelle',
+      personel_id: user?.id || mevcutKayit.personel_id,
+      personel_email: user?.email,
+      islem: 'veri_giris.guncelle',
       tablo: 'shm_veri_giris',
       kayit_id: params.id,
-      eski_veri: mevcutKayit,
-      yeni_veri: updated,
-      ip_adresi: getIpFromHeaders(request.headers),
-      user_agent: getUserAgentFromHeaders(request.headers)
+      aciklama: `Veri girişi güncellendi: ${new Date(mevcutKayit.tarih).toLocaleDateString('tr-TR')}`
     });
 
     return NextResponse.json({
@@ -124,7 +141,7 @@ export async function PUT(
  * Veri girişini siler
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -147,19 +164,20 @@ export async function DELETE(
       );
     }
 
+    const user = await getCurrentUser();
+
     await prisma.sHMVeriGiris.delete({
       where: { id: params.id }
     });
 
     // Aktivite logu
     await logAktivite({
-      personel_id: mevcutKayit.personel_id,
-      islem: 'shm.veri_giris.sil',
+      personel_id: user?.id || mevcutKayit.personel_id,
+      personel_email: user?.email,
+      islem: 'veri_giris.sil',
       tablo: 'shm_veri_giris',
       kayit_id: params.id,
-      eski_veri: mevcutKayit,
-      ip_adresi: getIpFromHeaders(request.headers),
-      user_agent: getUserAgentFromHeaders(request.headers)
+      aciklama: `Veri girişi silindi: ${new Date(mevcutKayit.tarih).toLocaleDateString('tr-TR')}`
     });
 
     return NextResponse.json({

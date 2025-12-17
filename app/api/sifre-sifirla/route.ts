@@ -69,8 +69,6 @@ export async function POST(request: NextRequest) {
         islem: 'sifre.sifirla.rate_limit',
         tablo: 'personel',
         aciklama: `Rate limit aşıldı: ${ip}`,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
       });
 
       return NextResponse.json(
@@ -107,8 +105,6 @@ export async function POST(request: NextRequest) {
         islem: 'sifre.sifirla.basarisiz',
         tablo: 'personel',
         aciklama: `Şifre sıfırlama başarısız: ${validated.tc_kimlik_no} - ${validated.email}`,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
       });
 
       return NextResponse.json(
@@ -125,8 +121,6 @@ export async function POST(request: NextRequest) {
       tablo: 'personel',
       kayit_id: data.personel_id,
       aciklama: `Şifre sıfırlama talebi oluşturuldu`,
-      ip_adresi: ip,
-      user_agent: request.headers.get('user-agent'),
     });
 
     return NextResponse.json({

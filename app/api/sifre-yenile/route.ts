@@ -40,8 +40,6 @@ export async function POST(request: NextRequest) {
         islem: 'sifre.yenile.basarisiz',
         tablo: 'personel',
         aciklama: `Şifre yenileme başarısız: ${data.error || 'Bilinmeyen hata'}`,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
       });
 
       return NextResponse.json(
@@ -58,8 +56,6 @@ export async function POST(request: NextRequest) {
       tablo: 'personel',
       kayit_id: data.personel_id,
       aciklama: `Şifre token ile yenilendi`,
-      ip_adresi: ip,
-      user_agent: request.headers.get('user-agent'),
     });
 
     return NextResponse.json({

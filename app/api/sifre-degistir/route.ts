@@ -41,8 +41,6 @@ export async function POST(request: NextRequest) {
         islem: 'sifre.degistir.basarisiz',
         tablo: 'personel',
         aciklama: `Şifre değiştirme başarısız: ${data.error || 'Bilinmeyen hata'}`,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
       });
 
       return NextResponse.json(
@@ -59,8 +57,6 @@ export async function POST(request: NextRequest) {
       tablo: 'personel',
       kayit_id: data.personel_id,
       aciklama: `Şifre başarıyla değiştirildi${data.ilk_giris ? ' (İlk giriş)' : ''}`,
-      ip_adresi: ip,
-      user_agent: request.headers.get('user-agent'),
     });
 
     // Response oluştur ve ilk_giris cookie'sini güncelle

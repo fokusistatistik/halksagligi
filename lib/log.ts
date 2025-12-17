@@ -6,11 +6,7 @@ export interface LogActivityParams {
   islem: string
   tablo: string
   kayit_id?: string
-  eski_veri?: any
-  yeni_veri?: any
   aciklama?: string
-  ip_adresi?: string | null
-  user_agent?: string | null
 }
 
 /**
@@ -25,11 +21,7 @@ export async function logAktivite(params: LogActivityParams) {
         islem: params.islem,
         tablo: params.tablo,
         kayit_id: params.kayit_id,
-        eski_veri: params.eski_veri || null,
-        yeni_veri: params.yeni_veri || null,
-        aciklama: params.aciklama,
-        ip_adresi: params.ip_adresi,
-        user_agent: params.user_agent
+        aciklama: params.aciklama
       }
     })
   } catch (error) {
@@ -38,20 +30,3 @@ export async function logAktivite(params: LogActivityParams) {
   }
 }
 
-/**
- * Helper to get IP address from request
- */
-export function getIpFromHeaders(headers: Headers): string | null {
-  return (
-    headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-    headers.get('x-real-ip') ||
-    null
-  )
-}
-
-/**
- * Helper to get user agent from request
- */
-export function getUserAgentFromHeaders(headers: Headers): string | null {
-  return headers.get('user-agent')
-}

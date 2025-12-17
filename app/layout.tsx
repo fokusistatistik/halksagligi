@@ -2,12 +2,13 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Kocaeli İSM - Görev Yönetim Sistemi',
-  description: 'Kocaeli İl Sağlık Müdürlüğü Görev Yönetim Sistemi',
+  title: 'SAHA - Sağlık Hizmetleri Analitiği',
+  description: 'Kocaeli İl Sağlık Müdürlüğü Sağlık Hizmetleri Analitiği Sistemi',
   keywords: [
+    'SAHA',
+    'Sağlık Hizmetleri Analitiği',
     'Kocaeli',
     'İl Sağlık Müdürlüğü',
-    'Görev Yönetimi',
     'KISM',
     'Sağlık',
   ],
@@ -37,10 +38,10 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
 
         {/* PWA Meta Tags */}
-        <meta name="application-name" content="HSB Görev" />
+        <meta name="application-name" content="SAHA" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="HSB Görev" />
+        <meta name="apple-mobile-web-app-title" content="SAHA" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#14a0b5" />
 

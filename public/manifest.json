@@ -1,7 +1,7 @@
 {
-  "name": "Halk Sağlığı Başkanlığı Görev Yönetim Sistemi",
-  "short_name": "HSB Görev",
-  "description": "Kocaeli İl Sağlık Müdürlüğü Halk Sağlığı Başkanlığı Görev Takip ve Yönetim Sistemi",
+  "name": "SAHA - Sağlık Hizmetleri Analitiği",
+  "short_name": "SAHA",
+  "description": "Kocaeli İl Sağlık Müdürlüğü Sağlık Hizmetleri Analitiği Sistemi",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

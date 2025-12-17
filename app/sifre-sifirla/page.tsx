@@ -100,9 +100,24 @@ export default function SifreSifirlaPage() {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <KeyRound className="w-8 h-8 text-blue-600" />
+          {/* Kocaeli İSM Logo */}
+          <div className="mx-auto mb-3">
+            <img
+              src="https://static.fokusistatistik.com/resimler/kism.png"
+              alt="Kocaeli İl Sağlık Müdürlüğü"
+              className="h-20 mx-auto"
+            />
           </div>
+
+          {/* SAHA Logo */}
+          <div className="mx-auto mb-4">
+            <img
+              src="https://static.fokusistatistik.com/resimler/saha.jpg"
+              alt="SAHA - Sağlık Hizmetleri Analitiği"
+              className="h-24 mx-auto rounded-lg shadow-md"
+            />
+          </div>
+
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Şifremi Unuttum</h1>
           <p className="text-gray-600">
             TC Kimlik No ve email adresinizi girerek şifrenizi sıfırlayabilirsiniz.

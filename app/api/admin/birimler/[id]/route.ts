@@ -9,9 +9,12 @@ import { z } from 'zod';
 const birimUpdateSchema = z.object({
   ad: z.string().min(3, 'Birim adı en az 3 karakter olmalıdır').optional(),
   kod: z.string().min(2, 'Birim kodu en az 2 karakter olmalıdır').toUpperCase().optional(),
-  tip: z.enum(['SHM', 'ASM', 'TOPLUM_SAGLIGI', 'BASKANLIK_BIRIMI']).optional(),
-  telefon: z.string().optional(),
-  email: z.string().email('Geçerli bir email giriniz').optional().or(z.literal('')),
+  tip: z.enum(['MUDURLUK', 'DIS_BIRIM']).optional(),
+  dis_birim_tip: z.enum(['ASM', 'HSM', 'VSD', 'ILCE_SAGLIK']).optional().nullable(),
+  ust_birim_id: z.string().uuid().optional().nullable(),
+  telefon: z.string().optional().nullable(),
+  email: z.string().email('Geçerli bir email giriniz').optional().or(z.literal('')).nullable(),
+  adres: z.string().optional().nullable(),
   aktif: z.boolean().optional()
 });
 
@@ -41,19 +44,26 @@ export async function GET(
     const birim = await prisma.birim.findUnique({
       where: { id: params.id },
       include: {
-        _count: {
+        ust_birim: {
           select: {
-            personeller: true,
-            shm_alt_birimler: true
+            id: true,
+            ad: true,
+            kod: true
           }
         },
-        shm_alt_birimler: {
+        alt_birimler: {
           select: {
             id: true,
             ad: true,
             kod: true,
             tip: true,
             aktif: true
+          }
+        },
+        _count: {
+          select: {
+            personeller: true,
+            alt_birimler: true
           }
         }
       }
@@ -139,8 +149,11 @@ export async function PUT(
         ...(validated.ad && { ad: validated.ad }),
         ...(validated.kod && { kod: validated.kod }),
         ...(validated.tip && { tip: validated.tip as any }),
-        ...(validated.telefon !== undefined && { telefon: validated.telefon || null }),
-        ...(validated.email !== undefined && { email: validated.email || null }),
+        ...(validated.dis_birim_tip !== undefined && { dis_birim_tip: validated.dis_birim_tip as any }),
+        ...(validated.ust_birim_id !== undefined && { ust_birim_id: validated.ust_birim_id }),
+        ...(validated.telefon !== undefined && { telefon: validated.telefon }),
+        ...(validated.email !== undefined && { email: validated.email }),
+        ...(validated.adres !== undefined && { adres: validated.adres }),
         ...(validated.aktif !== undefined && { aktif: validated.aktif })
       }
     });
@@ -152,9 +165,7 @@ export async function PUT(
       islem: 'birim.guncelle',
       tablo: 'birimler',
       kayit_id: guncellenmis.id,
-      eski_veri: mevcutBirim,
-      yeni_veri: guncellenmis,
-      ip_adresi: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined
+      aciklama: `Birim güncellendi: ${guncellenmis.ad}`
     });
 
     // Webhook'a gönder
@@ -206,7 +217,7 @@ export async function PUT(
 
 // DELETE - Birimi sil
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -266,8 +277,7 @@ export async function DELETE(
       islem: 'birim.sil',
       tablo: 'birimler',
       kayit_id: params.id,
-      eski_veri: mevcutBirim,
-      ip_adresi: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined
+      aciklama: `Birim silindi: ${mevcutBirim.ad}`
     });
 
     // Webhook'a gönder

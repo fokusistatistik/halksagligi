@@ -29,12 +29,12 @@ async function main() {
       aciklama: 'Halk Sağlığı Başkanlığı yöneticisi, tüm birimleri yönetir'
     },
     {
-      kod: 'ISTATISTIKCI',
-      ad: 'İstatistik Uzmanı',
+      kod: 'ANALIST',
+      ad: 'Analist',
       seviye: 8,
       renk: '#2563EB',
       icon: 'bar-chart-3',
-      aciklama: 'Veri analizi, raporlama ve istatistik işlemlerinden sorumlu'
+      aciklama: 'Müdürlük biriminde tüm verileri görebilir, veri analizi ve raporlama yapar'
     },
     {
       kod: 'BIRIM_YONETICISI',
@@ -42,7 +42,7 @@ async function main() {
       seviye: 7,
       renk: '#059669',
       icon: 'briefcase',
-      aciklama: 'ASM veya başkanlık birim yöneticisi'
+      aciklama: 'Dış birimlerde (ASM, HSM, VSD, İlçe Sağlık) birim yöneticisi - Tüm verileri görür, girer ve onaylar'
     },
     {
       kod: 'PERSONEL',
@@ -50,15 +50,7 @@ async function main() {
       seviye: 4,
       renk: '#0891B2',
       icon: 'user',
-      aciklama: 'Standart personel, görev takibi ve veri girişi yapar'
-    },
-    {
-      kod: 'DIS_BIRIM',
-      ad: 'Dış Birim Kullanıcısı',
-      seviye: 2,
-      renk: '#64748B',
-      icon: 'building',
-      aciklama: 'ASM gibi dış birimlerin sınırlı erişimi'
+      aciklama: 'Standart personel - Dış birimlerde kendi verilerini girer, Müdürlük biriminde bağlı dış birimlerin verilerini yönetir'
     },
     {
       kod: 'MISAFIR',
@@ -185,42 +177,41 @@ async function main() {
       'personel.profil_duzenle'
     ],
 
-    ISTATISTIKCI: [
-      'personel.goruntule',
-      'birim.goruntule',
-      'gorev.goruntule',
-      'asm.veri_goruntule', 'asm.veri_giris', 'asm.veri_duzenle',
-      'shm.veri_goruntule', 'shm.veri_giris', 'shm.veri_duzenle', 'shm.rapor',
-      'rapor.genel', 'rapor.personel', 'rapor.birim', 'rapor.asm', 'rapor.export',
-      'takvim.goruntule',
-      'personel.profil_duzenle'
-    ],
-
-    BIRIM_YONETICISI: [
+    // ANALIST: Eski İstatistikçi + Birim Yöneticisi yetkilerinin birleşimi
+    // Müdürlük birimlerinde tüm verileri görebilir
+    ANALIST: [
       'personel.goruntule',
       'birim.goruntule',
       'gorev.goruntule', 'gorev.olustur', 'gorev.duzenle', 'gorev.devret', 'gorev.onay',
       'asm.veri_goruntule', 'asm.veri_giris', 'asm.veri_duzenle', 'asm.veri_onay',
       'shm.veri_goruntule', 'shm.veri_giris', 'shm.veri_duzenle', 'shm.veri_onay', 'shm.rapor',
-      'rapor.birim', 'rapor.asm',
+      'rapor.genel', 'rapor.personel', 'rapor.birim', 'rapor.asm', 'rapor.export',
       'takvim.goruntule', 'takvim.duzenle',
       'bildirim.gonder',
       'personel.profil_duzenle'
     ],
 
-    PERSONEL: [
-      'gorev.goruntule',
-      'asm.veri_giris',
-      'shm.veri_giris',
+    // BIRIM_YONETICISI: Sadece dış birimlerde kullanılır
+    // İlgili dış birimin tüm verilerini görür, girer ve onaylar
+    BIRIM_YONETICISI: [
+      'personel.goruntule',
+      'birim.goruntule',
+      'gorev.goruntule', 'gorev.olustur', 'gorev.duzenle', 'gorev.onay',
+      'asm.veri_goruntule', 'asm.veri_giris', 'asm.veri_duzenle', 'asm.veri_onay',
+      'shm.veri_goruntule', 'shm.veri_giris', 'shm.veri_duzenle', 'shm.veri_onay',
+      'rapor.birim', 'rapor.asm',
       'takvim.goruntule',
+      'bildirim.gonder',
       'personel.profil_duzenle'
     ],
 
-    DIS_BIRIM: [
-      'asm.veri_giris',
-      'asm.veri_goruntule',
-      'shm.veri_giris',
-      'shm.veri_goruntule',
+    // PERSONEL:
+    // Dış birimlerde: Sadece kendi girdiği verileri görür
+    // Müdürlük biriminde: Bağlı dış birimlerin verilerini yönetir
+    PERSONEL: [
+      'gorev.goruntule',
+      'asm.veri_giris', 'asm.veri_goruntule', 'asm.veri_duzenle', 'asm.veri_onay',
+      'shm.veri_giris', 'shm.veri_goruntule', 'shm.veri_duzenle', 'shm.veri_onay',
       'takvim.goruntule',
       'personel.profil_duzenle'
     ],
@@ -262,13 +253,14 @@ async function main() {
   // ============================================
   console.log('🏢 Birimler oluşturuluyor...')
 
+  // MÜDÜRLÜK BİRİMLERİ
   const halkSagligiBirim = await prisma.birim.upsert({
-    where: { kod: 'HS-MERKEZ' },
+    where: { kod: 'MUDURLUK-MERKEZ' },
     update: {},
     create: {
-      ad: 'Halk Sağlığı Başkanlığı',
-      kod: 'HS-MERKEZ',
-      tip: 'BASKANLIK_BIRIMI',
+      ad: 'Halk Sağlığı Müdürlüğü',
+      kod: 'MUDURLUK-MERKEZ',
+      tip: 'MUDURLUK',
       adres: 'Kocaeli İl Sağlık Müdürlüğü',
       telefon: '0262 XXX XX XX',
       email: 'halksagligi@saglik.gov.tr',
@@ -276,140 +268,121 @@ async function main() {
     }
   })
 
+  const asmSubesi = await prisma.birim.upsert({
+    where: { kod: 'MUDURLUK-ASM-SUBE' },
+    update: {},
+    create: {
+      ad: 'ASM Şubesi',
+      kod: 'MUDURLUK-ASM-SUBE',
+      tip: 'MUDURLUK',
+      ust_birim_id: halkSagligiBirim.id,
+      telefon: '0262 XXX XX XX',
+      aktif: true
+    }
+  })
+
+  const hsmSubesi = await prisma.birim.upsert({
+    where: { kod: 'MUDURLUK-HSM-SUBE' },
+    update: {},
+    create: {
+      ad: 'HSM Şubesi (Sağlıklı Hayat Merkezi)',
+      kod: 'MUDURLUK-HSM-SUBE',
+      tip: 'MUDURLUK',
+      ust_birim_id: halkSagligiBirim.id,
+      telefon: '0262 XXX XX XX',
+      aktif: true
+    }
+  })
+
+  const vsdSubesi = await prisma.birim.upsert({
+    where: { kod: 'MUDURLUK-VSD-SUBE' },
+    update: {},
+    create: {
+      ad: 'VSD Şubesi (Verem Savaş)',
+      kod: 'MUDURLUK-VSD-SUBE',
+      tip: 'MUDURLUK',
+      ust_birim_id: halkSagligiBirim.id,
+      telefon: '0262 XXX XX XX',
+      aktif: true
+    }
+  })
+
+  // DIŞ BİRİMLER - ASM Örnekleri
   await prisma.birim.upsert({
-    where: { kod: 'ASM-MERKEZ' },
+    where: { kod: 'ASM-IZMIT-ALIKAHYA' },
     update: {},
     create: {
-      ad: 'ASM Merkez',
-      kod: 'ASM-MERKEZ',
-      tip: 'ASM',
-      ust_birim_id: halkSagligiBirim.id,
+      ad: 'İzmit Alikahya Aile Sağlığı Merkezi',
+      kod: 'ASM-IZMIT-ALIKAHYA',
+      tip: 'DIS_BIRIM',
+      dis_birim_tip: 'ASM',
+      ust_birim_id: asmSubesi.id,
       telefon: '0262 XXX XX XX',
       aktif: true
     }
   })
 
   await prisma.birim.upsert({
-    where: { kod: 'ASM-DOGU' },
+    where: { kod: 'ASM-GEBZE-MERKEZ' },
     update: {},
     create: {
-      ad: 'ASM Doğu',
-      kod: 'ASM-DOGU',
-      tip: 'ASM',
-      ust_birim_id: halkSagligiBirim.id,
+      ad: 'Gebze Merkez Aile Sağlığı Merkezi',
+      kod: 'ASM-GEBZE-MERKEZ',
+      tip: 'DIS_BIRIM',
+      dis_birim_tip: 'ASM',
+      ust_birim_id: asmSubesi.id,
       telefon: '0262 XXX XX XX',
       aktif: true
     }
   })
 
+  // DIŞ BİRİMLER - HSM Örneği
   await prisma.birim.upsert({
-    where: { kod: 'ASM-BATI' },
+    where: { kod: 'HSM-KOCAELI' },
     update: {},
     create: {
-      ad: 'ASM Batı',
-      kod: 'ASM-BATI',
-      tip: 'ASM',
+      ad: 'Kocaeli Sağlıklı Hayat Merkezi',
+      kod: 'HSM-KOCAELI',
+      tip: 'DIS_BIRIM',
+      dis_birim_tip: 'HSM',
+      ust_birim_id: hsmSubesi.id,
+      telefon: '0262 XXX XX XX',
+      email: 'hsm@saglik.gov.tr',
+      aktif: true
+    }
+  })
+
+  // DIŞ BİRİMLER - VSD Örneği
+  await prisma.birim.upsert({
+    where: { kod: 'VSD-KOCAELI' },
+    update: {},
+    create: {
+      ad: 'Kocaeli Verem Savaş Dispanseri',
+      kod: 'VSD-KOCAELI',
+      tip: 'DIS_BIRIM',
+      dis_birim_tip: 'VSD',
+      ust_birim_id: vsdSubesi.id,
+      telefon: '0262 XXX XX XX',
+      aktif: true
+    }
+  })
+
+  // DIŞ BİRİMLER - İlçe Sağlık Örneği
+  await prisma.birim.upsert({
+    where: { kod: 'ILCE-GEBZE' },
+    update: {},
+    create: {
+      ad: 'Gebze İlçe Sağlık Müdürlüğü',
+      kod: 'ILCE-GEBZE',
+      tip: 'DIS_BIRIM',
+      dis_birim_tip: 'ILCE_SAGLIK',
       ust_birim_id: halkSagligiBirim.id,
       telefon: '0262 XXX XX XX',
       aktif: true
     }
   })
 
-  // SHM Merkez Birimi
-  const shmMerkez = await prisma.birim.upsert({
-    where: { kod: 'SHM-MERKEZ' },
-    update: {},
-    create: {
-      ad: 'Sağlıklı Hayat Merkezi',
-      kod: 'SHM-MERKEZ',
-      tip: 'SHM',
-      ust_birim_id: halkSagligiBirim.id,
-      telefon: '0262 XXX XX XX',
-      email: 'shm@saglik.gov.tr',
-      aktif: true
-    }
-  })
-
-  console.log('✅ Birimler oluşturuldu')
-
-  // ============================================
-  // 4.1. SHM ALT BİRİMLERİ OLUŞTUR
-  // ============================================
-  console.log('🏥 SHM Alt Birimleri oluşturuluyor...')
-
-  const shmAltBirimler = [
-    {
-      ad: 'Beslenme Danışmanlığı',
-      kod: 'SHM-BESLENME',
-      tip: 'BESLENME_DANISMANLIGI'
-    },
-    {
-      ad: 'Kronik Hastalıklar ve Fiziksel Aktivite Danışmanlığı',
-      kod: 'SHM-KRONIK',
-      tip: 'KRONIK_HASTALIKLAR_FIZIKSEL_AKTIVITE'
-    },
-    {
-      ad: 'Kadın ve Üreme Sağlığı Danışmanlığı',
-      kod: 'SHM-KADIN',
-      tip: 'KADIN_UREME_SAGLIGI'
-    },
-    {
-      ad: 'Kanser Erken Teşhis, Tarama ve Eğitim Merkezi',
-      kod: 'SHM-KANSER',
-      tip: 'KANSER_ERKEN_TESHIS'
-    },
-    {
-      ad: 'Ruh Sağlığı Danışmanlığı',
-      kod: 'SHM-RUH',
-      tip: 'RUH_SAGLIGI'
-    },
-    {
-      ad: 'Çocuk ve Ergen Sağlığı Danışmanlığı',
-      kod: 'SHM-COCUK',
-      tip: 'COCUK_ERGEN_SAGLIGI'
-    },
-    {
-      ad: 'Tütün ve Madde Bağımlılığı Danışmanlığı',
-      kod: 'SHM-BAGIMLILI',
-      tip: 'TUTUN_MADDE_BAGIMLILIGI'
-    },
-    {
-      ad: 'Enfeksiyon Kontrol Hizmetleri',
-      kod: 'SHM-ENFEKSIYON',
-      tip: 'ENFEKSIYON_KONTROL'
-    },
-    {
-      ad: 'Koruyucu Ağız ve Diş Sağlığı Danışmanlığı',
-      kod: 'SHM-DIS',
-      tip: 'AGIZ_DIS_SAGLIGI'
-    },
-    {
-      ad: 'Tıbbi Hizmetler',
-      kod: 'SHM-TIBBI',
-      tip: 'TIBBI_HIZMETLER'
-    },
-    {
-      ad: 'İdari Hizmetler',
-      kod: 'SHM-IDARI',
-      tip: 'IDARI_HIZMETLER'
-    }
-  ]
-
-  for (const altBirim of shmAltBirimler) {
-    await prisma.sHMAltBirim.upsert({
-      where: { kod: altBirim.kod },
-      update: {},
-      create: {
-        ad: altBirim.ad,
-        kod: altBirim.kod,
-        tip: altBirim.tip as any,
-        shm_birim_id: shmMerkez.id,
-        aktif: true
-      }
-    })
-  }
-
-  console.log(`✅ ${shmAltBirimler.length} SHM alt birimi oluşturuldu`)
+  console.log('✅ Birimler oluşturuldu (Müdürlük ve Dış Birimler)')
 
   // ============================================
   // 5. İLK ADMIN KULLANICISI OLUŞTUR

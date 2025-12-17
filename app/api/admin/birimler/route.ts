@@ -9,9 +9,12 @@ import { z } from 'zod';
 const birimSchema = z.object({
   ad: z.string().min(3, 'Birim adı en az 3 karakter olmalıdır'),
   kod: z.string().min(2, 'Birim kodu en az 2 karakter olmalıdır').toUpperCase(),
-  tip: z.enum(['SHM', 'ASM', 'TOPLUM_SAGLIGI', 'BASKANLIK_BIRIMI']),
-  telefon: z.string().optional(),
-  email: z.string().email('Geçerli bir email giriniz').optional().or(z.literal('')),
+  tip: z.enum(['MUDURLUK', 'DIS_BIRIM']),
+  dis_birim_tip: z.enum(['ASM', 'HSM', 'VSD', 'ILCE_SAGLIK']).optional().nullable(),
+  ust_birim_id: z.string().uuid().optional().nullable(),
+  telefon: z.string().optional().nullable(),
+  email: z.string().email('Geçerli bir email giriniz').optional().or(z.literal('')).nullable(),
+  adres: z.string().optional().nullable(),
   aktif: z.boolean().default(true)
 });
 
@@ -42,6 +45,14 @@ export async function GET(_request: NextRequest) {
         ad: true,
         kod: true,
         tip: true,
+        dis_birim_tip: true,
+        ust_birim_id: true,
+        ust_birim: {
+          select: {
+            id: true,
+            ad: true
+          }
+        },
         telefon: true,
         email: true,
         aktif: true,
@@ -49,7 +60,7 @@ export async function GET(_request: NextRequest) {
         _count: {
           select: {
             personeller: true,
-            shm_alt_birimler: true
+            alt_birimler: true
           }
         }
       }
@@ -110,37 +121,14 @@ export async function POST(request: NextRequest) {
         ad: validated.ad,
         kod: validated.kod,
         tip: validated.tip as any,
-        telefon: validated.telefon || null,
-        email: validated.email || null,
+        dis_birim_tip: validated.dis_birim_tip as any,
+        ust_birim_id: validated.ust_birim_id,
+        telefon: validated.telefon,
+        email: validated.email,
+        adres: validated.adres,
         aktif: validated.aktif
       }
     });
-
-    // Eğer SHM ise, otomatik olarak 11 alt birim oluştur
-    if (validated.tip === 'SHM') {
-      const shmAltBirimler = [
-        { ad: 'Beslenme Danışmanlığı', kod: `${validated.kod}-BESLENME`, tip: 'BESLENME_DANISMANLIGI' },
-        { ad: 'Kronik Hastalıklar ve Fiziksel Aktivite', kod: `${validated.kod}-KRONIK`, tip: 'KRONIK_HASTALIKLAR_FIZIKSEL_AKTIVITE' },
-        { ad: 'Kadın ve Üreme Sağlığı', kod: `${validated.kod}-KADIN`, tip: 'KADIN_UREME_SAGLIGI' },
-        { ad: 'Kanser Erken Teşhis, Tarama ve Eğitim', kod: `${validated.kod}-KANSER`, tip: 'KANSER_ERKEN_TESHIS' },
-        { ad: 'Ruh Sağlığı Danışmanlığı', kod: `${validated.kod}-RUH`, tip: 'RUH_SAGLIGI' },
-        { ad: 'Çocuk ve Ergen Sağlığı', kod: `${validated.kod}-COCUK`, tip: 'COCUK_ERGEN_SAGLIGI' },
-        { ad: 'Tütün ve Madde Bağımlılığı', kod: `${validated.kod}-TUTUN`, tip: 'TUTUN_MADDE_BAGIMLILIGI' },
-        { ad: 'Enfeksiyon Kontrol Hizmetleri', kod: `${validated.kod}-ENFEKSIYON`, tip: 'ENFEKSIYON_KONTROL' },
-        { ad: 'Koruyucu Ağız ve Diş Sağlığı', kod: `${validated.kod}-AGIZ`, tip: 'AGIZ_DIS_SAGLIGI' },
-        { ad: 'Tıbbi Hizmetler', kod: `${validated.kod}-TIBBI`, tip: 'TIBBI_HIZMETLER' },
-        { ad: 'İdari Hizmetler', kod: `${validated.kod}-IDARI`, tip: 'IDARI_HIZMETLER' }
-      ];
-
-      await prisma.sHMAltBirim.createMany({
-        data: shmAltBirimler.map(alt => ({
-          ...alt,
-          shm_birim_id: yeniBirim.id,
-          aktif: true,
-          tip: alt.tip as any
-        }))
-      });
-    }
 
     // Activity log
     await logAktivite({
@@ -149,8 +137,7 @@ export async function POST(request: NextRequest) {
       islem: 'birim.olustur',
       tablo: 'birimler',
       kayit_id: yeniBirim.id,
-      yeni_veri: yeniBirim,
-      ip_adresi: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined
+      aciklama: `Birim oluşturuldu: ${yeniBirim.ad}`
     });
 
     // Webhook'a gönder
@@ -180,7 +167,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: yeniBirim,
-      message: validated.tip === 'SHM' ? 'Birim ve alt birimler oluşturuldu' : 'Birim oluşturuldu'
+      message: 'Birim oluşturuldu'
     });
 
   } catch (error: any) {

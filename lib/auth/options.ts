@@ -44,15 +44,17 @@ export const authOptions: NextAuthOptions = {
               id: data.data.id,
               name: data.data.name,
               email: data.data.email,
-              role: data.data.role,
-              birim_id: data.data.birim_id,
-              avatar: data.data.avatar,
+              tc_kimlik_no: data.data.tc_kimlik_no || '',
+              rol: data.data.rol || data.data.role,
+              birim: data.data.birim,
+              ilk_giris: data.data.ilk_giris || false,
+              profil_foto_url: data.data.profil_foto_url || null,
             };
           }
 
           return null;
-        } catch (error) {
-          console.error("Auth error:", error);
+        } catch (_error) {
+          console.error("Auth error:", _error);
           return null;
         }
       },
@@ -62,18 +64,22 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role;
-        token.birim_id = (user as any).birim_id;
-        token.avatar = (user as any).avatar;
+        token.tc_kimlik_no = (user as any).tc_kimlik_no;
+        token.rol = (user as any).rol;
+        token.birim = (user as any).birim;
+        token.ilk_giris = (user as any).ilk_giris;
+        token.profil_foto_url = (user as any).profil_foto_url;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
-        (session.user as any).birim_id = token.birim_id;
-        (session.user as any).avatar = token.avatar;
+        (session.user as any).tc_kimlik_no = token.tc_kimlik_no;
+        (session.user as any).rol = token.rol;
+        (session.user as any).birim = token.birim;
+        (session.user as any).ilk_giris = token.ilk_giris;
+        (session.user as any).profil_foto_url = token.profil_foto_url;
       }
       return session;
     },

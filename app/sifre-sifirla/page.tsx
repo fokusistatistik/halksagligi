@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { KeyRound, AlertCircle, Mail, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Mail, ArrowLeft } from 'lucide-react';
 import { sifreSifirlaSchema, type SifreSifirlaInput } from '@/lib/validations/password';
 
 export default function SifreSifirlaPage() {

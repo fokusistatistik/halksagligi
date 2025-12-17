@@ -59,15 +59,26 @@ export const authOptions: NextAuthOptions = {
 
           console.log('✅ Login başarılı:', personel.ad, personel.soyad);
 
+          // CRITICAL: Return flat object for NextAuth serialization
           return {
             id: personel.id,
-            name: `${personel.ad} ${personel.soyad}`,
-            email: personel.email,
             tc_kimlik_no: personel.tc_kimlik_no,
-            rol: personel.rol,
-            birim: personel.birim,
+            email: personel.email,
+            name: `${personel.ad} ${personel.soyad}`,
             ilk_giris: personel.ilk_giris,
             profil_foto_url: personel.profil_foto_url,
+            rol: {
+              id: personel.rol.id,
+              kod: personel.rol.kod,
+              ad: personel.rol.ad,
+              seviye: personel.rol.seviye,
+            },
+            birim: {
+              id: personel.birim.id,
+              ad: personel.birim.ad,
+              kod: personel.birim.kod,
+              tip: personel.birim.tip,
+            },
           };
         } catch (error) {
           console.error('💥 Authorize error:', error);
@@ -79,24 +90,32 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        console.log('📝 JWT token oluşturuluyor:', user.email);
         token.id = user.id;
         token.tc_kimlik_no = (user as any).tc_kimlik_no;
-        token.rol = (user as any).rol;
-        token.birim = (user as any).birim;
+        token.email = user.email;
+        token.name = user.name;
         token.ilk_giris = (user as any).ilk_giris;
         token.profil_foto_url = (user as any).profil_foto_url;
+        token.rol = (user as any).rol;
+        token.birim = (user as any).birim;
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
+      console.log('🎫 Session oluşturuluyor:', token.email);
+
+      if (token && session.user) {
         (session.user as any).id = token.id;
         (session.user as any).tc_kimlik_no = token.tc_kimlik_no;
-        (session.user as any).rol = token.rol;
-        (session.user as any).birim = token.birim;
+        (session.user as any).email = token.email;
+        (session.user as any).name = token.name;
         (session.user as any).ilk_giris = token.ilk_giris;
         (session.user as any).profil_foto_url = token.profil_foto_url;
+        (session.user as any).rol = token.rol;
+        (session.user as any).birim = token.birim;
       }
+
       return session;
     },
   },

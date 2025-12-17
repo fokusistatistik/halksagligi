@@ -1,42 +1,22 @@
 import { withAuth } from 'next-auth/middleware';
-import { NextResponse } from 'next/server';
 
 /**
  * Next.js Middleware with NextAuth
  *
  * Bu middleware:
  * 1. NextAuth ile authentication kontrolü yapar
- * 2. İlk giriş yapan kullanıcıları /sifre-degistir sayfasına yönlendirir
- * 3. Public sayfaları korumadan geçirir
+ * 2. Public sayfaları korumadan geçirir
+ * 3. Unauthorized kullanıcıları /login'e yönlendirir
  */
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
-    const pathname = req.nextUrl.pathname;
-
-    // İlk giriş kontrolü
-    if (token?.ilk_giris) {
-      // İlk giriş yapan kullanıcı, sadece şifre değiştirme sayfasına ve API'sine erişebilir
-      const allowedPaths = ['/sifre-degistir', '/api/sifre-degistir'];
-      const isAllowed = allowedPaths.some((path) => pathname.startsWith(path));
-
-      if (!isAllowed) {
-        return NextResponse.redirect(new URL('/sifre-degistir', req.url));
-      }
-    }
-
-    return NextResponse.next();
+export default withAuth({
+  callbacks: {
+    authorized: ({ token }) => !!token,
   },
-  {
-    callbacks: {
-      authorized: ({ token }) => !!token,
-    },
-    pages: {
-      signIn: '/login',
-    },
-  }
-);
+  pages: {
+    signIn: '/login',
+  },
+});
 
 export const config = {
   matcher: [

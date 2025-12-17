@@ -2,13 +2,11 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn, AlertCircle } from 'lucide-react';
 import PasswordInput from '@/components/password-input';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -26,6 +24,8 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    console.log('🔐 Form submit başladı:', formData.tc_kimlik_no);
+
     try {
       const result = await signIn('credentials', {
         tc_kimlik_no: formData.tc_kimlik_no,
@@ -33,14 +33,21 @@ export default function LoginPage() {
         redirect: false,
       });
 
+      console.log('📊 SignIn result:', result);
+
       if (result?.error) {
+        console.error('❌ SignIn error:', result.error);
         setError(result.error);
       } else if (result?.ok) {
-        // Başarılı giriş - ana sayfaya yönlendir
-        router.push('/');
-        router.refresh();
+        console.log('✅ Login başarılı, redirect ediliyor...');
+        // Hard redirect to ensure session is loaded
+        window.location.href = '/';
+      } else {
+        console.error('⚠️ Beklenmeyen durum:', result);
+        setError('Beklenmeyen bir hata oluştu');
       }
     } catch (err: any) {
+      console.error('💥 Catch error:', err);
       setError(err.message || 'Giriş başarısız');
     } finally {
       setLoading(false);
@@ -107,9 +114,10 @@ export default function LoginPage() {
                 maxLength={11}
                 pattern="[0-9]{11}"
                 autoComplete="username"
+                disabled={loading}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-                         transition-all"
+                         transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 

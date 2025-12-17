@@ -12,7 +12,10 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Şifre", type: "password" },
       },
       async authorize(credentials) {
+        console.log('🔐 Authorize başladı:', credentials?.tc_kimlik_no);
+
         if (!credentials?.tc_kimlik_no || !credentials?.password) {
+          console.error('❌ Credentials eksik');
           throw new Error("TC Kimlik No ve şifre gereklidir");
         }
 
@@ -26,19 +29,25 @@ export const authOptions: NextAuthOptions = {
             }
           });
 
+          console.log('👤 Personel bulundu:', personel ? 'Evet' : 'Hayır');
+
           if (!personel) {
+            console.error('❌ Kullanıcı bulunamadı');
             throw new Error("Geçersiz TC Kimlik No veya şifre");
           }
 
           // Aktif mi kontrol et
           if (!personel.aktif) {
+            console.error('❌ Kullanıcı aktif değil');
             throw new Error("Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin.");
           }
 
           // Şifre kontrolü
           const isPasswordValid = await bcrypt.compare(credentials.password, personel.password);
+          console.log('🔑 Şifre doğrulaması:', isPasswordValid ? 'Başarılı' : 'Başarısız');
 
           if (!isPasswordValid) {
+            console.error('❌ Şifre hatalı');
             throw new Error("Geçersiz TC Kimlik No veya şifre");
           }
 
@@ -47,6 +56,8 @@ export const authOptions: NextAuthOptions = {
             where: { id: personel.id },
             data: { son_giris_tarihi: new Date() }
           });
+
+          console.log('✅ Login başarılı:', personel.ad, personel.soyad);
 
           return {
             id: personel.id,
@@ -59,7 +70,7 @@ export const authOptions: NextAuthOptions = {
             profil_foto_url: personel.profil_foto_url,
           };
         } catch (error) {
-          console.error("Auth error:", error);
+          console.error('💥 Authorize error:', error);
           throw error;
         }
       },

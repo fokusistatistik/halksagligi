@@ -1,19 +1,14 @@
 {
   "name": "SAHA - Sağlık Hizmetleri Analitiği",
   "short_name": "SAHA",
-  "description": "Kocaeli İl Sağlık Müdürlüğü Sağlık Hizmetleri Analitiği Sistemi",
+  "description": "Kocaeli İl Sağlık Müdürlüğü Veri Yönetim Platformu",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#14a0b5",
-  "orientation": "portrait-primary",
-  "scope": "/",
-  "lang": "tr",
-  "dir": "ltr",
-  "categories": ["productivity", "business"],
   "icons": [
     {
-      "src": "https://static.fokusistatistik.com/resimler/favicon.png",
+      "src": "https://static.fokusistatistik.com/resimler/kism.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
@@ -22,65 +17,7 @@
       "src": "https://static.fokusistatistik.com/resimler/kism.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/login.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "/screenshots/dashboard.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Görevlerim",
-      "short_name": "Görevler",
-      "description": "Aktif görevlerinizi görüntüleyin",
-      "url": "/gorevler",
-      "icons": [
-        {
-          "src": "https://static.fokusistatistik.com/resimler/favicon.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Yeni Görev",
-      "short_name": "Yeni",
-      "description": "Yeni görev oluşturun",
-      "url": "/gorev/yeni",
-      "icons": [
-        {
-          "src": "https://static.fokusistatistik.com/resimler/favicon.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ],
-  "prefer_related_applications": false,
-  "related_applications": [],
-  "share_target": {
-    "action": "/share",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url",
-      "files": [
-        {
-          "name": "files",
-          "accept": ["image/*", "application/pdf"]
-        }
-      ]
-    }
-  }
+  ]
 }

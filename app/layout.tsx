@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ToastContainer } from '@/components/toast-container';
 
 export const metadata: Metadata = {
   title: 'SAHA - Sağlık Hizmetleri Analitiği',
@@ -60,6 +61,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans">
         {children}
+        <ToastContainer />
       </body>
     </html>
   );

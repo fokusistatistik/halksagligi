@@ -2,11 +2,13 @@
 
 import { useState, useRef } from 'react';
 import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn, AlertCircle } from 'lucide-react';
 import PasswordInput from '@/components/password-input';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -31,14 +33,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signIn('credentials', {
+      const result = await signIn('credentials', {
         tc_kimlik_no: formData.tc_kimlik_no,
         password: formData.password,
-        redirect: true,
-        callbackUrl: '/',
+        redirect: false, // Manual redirect control
       });
 
-      // If we reach here, signIn failed (redirect: true doesn't return on success)
+      // Check result
+      if (result?.ok) {
+        // Success - redirect to home
+        router.replace('/');
+      } else {
+        // Error from NextAuth
+        const errorMessage = result?.error || 'Giriş başarısız. Lütfen tekrar deneyin.';
+        setError(errorMessage);
+        setLoading(false);
+        isSubmitting.current = false;
+      }
     } catch (err: any) {
       setError(err?.message || 'Giriş başarısız. Lütfen tekrar deneyin.');
       setLoading(false);

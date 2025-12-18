@@ -25,8 +25,7 @@ export async function logAktivite(params: LogActivityParams) {
       }
     })
   } catch (error) {
-    console.error('Activity log error:', error)
-    // Log hatası uygulamayı durdurmamalı
+    // Silently fail - aktivite log should not break the main operation
   }
 }
 

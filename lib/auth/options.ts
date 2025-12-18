@@ -12,10 +12,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Şifre", type: "password" },
       },
       async authorize(credentials) {
-        console.log('🔐 Authorize başladı:', credentials?.tc_kimlik_no);
-
         if (!credentials?.tc_kimlik_no || !credentials?.password) {
-          console.error('❌ Credentials eksik');
           throw new Error("TC Kimlik No ve şifre gereklidir");
         }
 
@@ -29,25 +26,19 @@ export const authOptions: NextAuthOptions = {
             }
           });
 
-          console.log('👤 Personel bulundu:', personel ? 'Evet' : 'Hayır');
-
           if (!personel) {
-            console.error('❌ Kullanıcı bulunamadı');
             throw new Error("Geçersiz TC Kimlik No veya şifre");
           }
 
           // Aktif mi kontrol et
           if (!personel.aktif) {
-            console.error('❌ Kullanıcı aktif değil');
             throw new Error("Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin.");
           }
 
           // Şifre kontrolü
           const isPasswordValid = await bcrypt.compare(credentials.password, personel.password);
-          console.log('🔑 Şifre doğrulaması:', isPasswordValid ? 'Başarılı' : 'Başarısız');
 
           if (!isPasswordValid) {
-            console.error('❌ Şifre hatalı');
             throw new Error("Geçersiz TC Kimlik No veya şifre");
           }
 
@@ -57,9 +48,7 @@ export const authOptions: NextAuthOptions = {
             data: { son_giris_tarihi: new Date() }
           });
 
-          console.log('✅ Login başarılı:', personel.ad, personel.soyad);
-
-          // CRITICAL: Return flat object for NextAuth serialization
+          // Return flat object for NextAuth serialization
           return {
             id: personel.id,
             tc_kimlik_no: personel.tc_kimlik_no,
@@ -81,7 +70,7 @@ export const authOptions: NextAuthOptions = {
             },
           };
         } catch (error) {
-          console.error('💥 Authorize error:', error);
+          // Re-throw without logging sensitive data
           throw error;
         }
       },
@@ -90,7 +79,6 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        console.log('📝 JWT token oluşturuluyor:', user.email);
         token.id = user.id;
         token.tc_kimlik_no = (user as any).tc_kimlik_no;
         token.email = user.email;
@@ -103,8 +91,6 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      console.log('🎫 Session oluşturuluyor:', token.email);
-
       if (token && session.user) {
         (session.user as any).id = token.id;
         (session.user as any).tc_kimlik_no = token.tc_kimlik_no;

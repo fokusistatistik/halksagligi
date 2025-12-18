@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { LogIn, AlertCircle } from 'lucide-react';
@@ -13,6 +13,7 @@ export default function LoginPage() {
     tc_kimlik_no: '',
     password: '',
   });
+  const isSubmitting = useRef(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -21,42 +22,27 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent double submission
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
+
     setError('');
     setLoading(true);
 
-    console.log('🔐 Form submit başladı:', formData.tc_kimlik_no);
-
     try {
-      const result = await signIn('credentials', {
+      await signIn('credentials', {
         tc_kimlik_no: formData.tc_kimlik_no,
         password: formData.password,
-        redirect: false,
+        redirect: true,
         callbackUrl: '/',
       });
 
-      console.log('📊 SignIn result:', result);
-
-      if (result?.error) {
-        console.error('❌ SignIn error:', result.error);
-        setError(result.error);
-      } else if (result?.ok) {
-        console.log('✅ Login başarılı, redirect ediliyor...');
-
-        // NextAuth'un kendi redirect URL'ini kullan (session cookie set olana kadar bekler)
-        if (result.url) {
-          window.location.href = result.url;
-        } else {
-          window.location.href = '/';
-        }
-      } else {
-        console.error('⚠️ Beklenmeyen durum:', result);
-        setError('Beklenmeyen bir hata oluştu');
-      }
+      // If we reach here, signIn failed (redirect: true doesn't return on success)
     } catch (err: any) {
-      console.error('💥 Catch error:', err);
-      setError(err.message || 'Giriş başarısız');
-    } finally {
+      setError(err?.message || 'Giriş başarısız. Lütfen tekrar deneyin.');
       setLoading(false);
+      isSubmitting.current = false;
     }
   };
 

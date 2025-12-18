@@ -25,6 +25,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - manifest.json (PWA manifest)
      * - api/auth (NextAuth endpoints)
      * - api/sifre-sifirla (public password reset API)
      * - api/sifre-yenile (public password renew API)
@@ -32,6 +33,6 @@ export const config = {
      * - sifre-sifirla (password reset page)
      * - sifre-yenile (password renew page)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/sifre-sifirla|api/sifre-yenile|login|sifre-sifirla|sifre-yenile).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|api/auth|api/sifre-sifirla|api/sifre-yenile|login|sifre-sifirla|sifre-yenile).*)',
   ],
 };

@@ -1,85 +1,107 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sifreDegistirSchema } from '@/lib/validations/password';
 import { logAktivite } from '@/lib/log';
-
-const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.fokusistatistik.com';
+import { getCurrentUser } from '@/lib/auth/permissions';
+import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 /**
  * POST /api/sifre-degistir
- * Kullanıcının şifresini değiştirir (ilk giriş veya normal şifre değiştirme)
- * n8n webhook'a proxy yapar
+ * Kullanıcının şifresini değiştirir (TAMAMEN SUNUCUDA)
+ * İlk giriş veya normal şifre değiştirme
+ * 1. Session kontrolü
+ * 2. Eski şifre kontrolü
+ * 3. Yeni şifre güncelle
+ * 4. ilk_giris = false yap
  */
 export async function POST(request: NextRequest) {
   try {
+    // 1. Session kontrolü - kullanıcı login olmalı
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Oturum bulunamadı. Lütfen giriş yapın.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     // Validation
     const validated = sifreDegistirSchema.parse(body);
 
-    // IP adresi al
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-
-    // n8n webhook'a istek gönder
-    const response = await fetch(`${N8N_WEBHOOK_URL}/webhook/sifre-degistir`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    // 2. Kullanıcıyı DB'den al (şifreyle birlikte)
+    const personel = await prisma.personel.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        ilk_giris: true,
+        aktif: true,
       },
-      body: JSON.stringify({
-        ...validated,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
-      }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      // Log: Başarısız şifre değiştirme
-      await logAktivite({
-        personel_email: data.email || 'unknown',
-        islem: 'sifre.degistir.basarisiz',
-        tablo: 'personel',
-        aciklama: `Şifre değiştirme başarısız: ${data.error || 'Bilinmeyen hata'}`,
-      });
-
+    if (!personel) {
       return NextResponse.json(
-        { error: data.error || 'Şifre değiştirilemedi' },
-        { status: response.status }
+        { error: 'Kullanıcı bulunamadı' },
+        { status: 404 }
       );
     }
 
-    // Log: Başarılı şifre değiştirme
-    await logAktivite({
-      personel_id: data.personel_id,
-      personel_email: data.email,
-      islem: 'sifre.degistir',
-      tablo: 'personel',
-      kayit_id: data.personel_id,
-      aciklama: `Şifre başarıyla değiştirildi${data.ilk_giris ? ' (İlk giriş)' : ''}`,
+    if (!personel.aktif) {
+      return NextResponse.json(
+        { error: 'Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin.' },
+        { status: 403 }
+      );
+    }
+
+    // 3. Eski şifre kontrolü
+    const isOldPasswordValid = await bcrypt.compare(validated.eski_sifre, personel.password);
+
+    if (!isOldPasswordValid) {
+      await logAktivite({
+        personel_id: user.id,
+        personel_email: user.email,
+        islem: 'sifre.degistir.yanlis_eski_sifre',
+        tablo: 'personel',
+        kayit_id: user.id,
+        aciklama: `Şifre değiştirme başarısız - yanlış eski şifre`,
+      });
+
+      return NextResponse.json(
+        { error: 'Eski şifreniz hatalı' },
+        { status: 400 }
+      );
+    }
+
+    // 4. Yeni şifreyi hashle ve güncelle
+    const hashedPassword = await bcrypt.hash(validated.yeni_sifre, 10);
+
+    await prisma.personel.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        ilk_giris: false, // Artık ilk giriş değil
+      },
     });
 
-    // Response oluştur ve ilk_giris cookie'sini güncelle
-    const nextResponse = NextResponse.json({
+    // 5. Başarılı log
+    await logAktivite({
+      personel_id: user.id,
+      personel_email: user.email,
+      islem: 'sifre.degistir',
+      tablo: 'personel',
+      kayit_id: user.id,
+      aciklama: `Şifre başarıyla değiştirildi${personel.ilk_giris ? ' (İlk giriş)' : ''}`,
+    });
+
+    return NextResponse.json({
       success: true,
       message: 'Şifre başarıyla değiştirildi',
     });
-
-    // İlk giriş ise cookie'yi false yap
-    if (data.ilk_giris) {
-      nextResponse.cookies.set('ilk_giris', 'false', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 7 gün
-        path: '/',
-      });
-    }
-
-    return nextResponse;
   } catch (error: any) {
-    console.error('Şifre değiştirme hatası:', error);
-
     // Zod validation hatası
     if (error.errors) {
       return NextResponse.json(

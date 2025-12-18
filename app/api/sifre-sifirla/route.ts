@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sifreSifirlaSchema } from '@/lib/validations/password';
 import { logAktivite } from '@/lib/log';
+import { prisma } from '@/lib/prisma';
 
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.fokusistatistik.com';
 
@@ -49,8 +50,10 @@ function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
 
 /**
  * POST /api/sifre-sifirla
- * Şifre sıfırlama talebi oluşturur ve email gönderir
- * n8n webhook'a proxy yapar
+ * Şifre sıfırlama talebi oluşturur (SERVER-SIDE)
+ * 1. Kullanıcı doğrulama
+ * 2. Token oluşturma ve DB'ye kaydetme (SUNUCUDA)
+ * 3. Email gönderme (n8n webhook - OPERASYONEL)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -84,42 +87,108 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // n8n webhook'a istek gönder
-    const response = await fetch(`${N8N_WEBHOOK_URL}/webhook/sifre-sifirla`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    // 1. Kullanıcıyı bul (hem TC hem email eşleşmeli - güvenlik)
+    const personel = await prisma.personel.findFirst({
+      where: {
+        tc_kimlik_no: validated.tc_kimlik_no,
+        email: validated.email,
       },
-      body: JSON.stringify({
-        ...validated,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
-      }),
+      select: {
+        id: true,
+        tc_kimlik_no: true,
+        email: true,
+        ad: true,
+        soyad: true,
+        aktif: true,
+      },
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      // Log: Başarısız şifre sıfırlama talebi
+    // Güvenlik: Kullanıcı bulunamadı ama generic mesaj ver (email enumeration önleme)
+    if (!personel) {
+      // Fake success response (güvenlik)
       await logAktivite({
-        islem: 'sifre.sifirla.basarisiz',
+        islem: 'sifre.sifirla.kullanici_bulunamadi',
         tablo: 'personel',
-        aciklama: `Şifre sıfırlama başarısız: ${validated.tc_kimlik_no} - ${validated.email}`,
+        aciklama: `Şifre sıfırlama denemesi - kullanıcı bulunamadı: ${validated.tc_kimlik_no} / ${validated.email}`,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Eğer bu bilgiler sistemde kayıtlıysa, şifre sıfırlama bağlantısı email adresinize gönderildi',
+      });
+    }
+
+    // Kullanıcı aktif değilse
+    if (!personel.aktif) {
+      await logAktivite({
+        personel_id: personel.id,
+        personel_email: personel.email,
+        islem: 'sifre.sifirla.pasif_kullanici',
+        tablo: 'personel',
+        kayit_id: personel.id,
+        aciklama: `Pasif kullanıcı için şifre sıfırlama denemesi`,
       });
 
       return NextResponse.json(
-        { error: data.error || 'Şifre sıfırlama talebi oluşturulamadı' },
-        { status: response.status }
+        { error: 'Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin.' },
+        { status: 403 }
       );
     }
 
-    // Log: Başarılı şifre sıfırlama talebi
+    // 2. Önceki kullanılmamış tokenları iptal et (temizlik)
+    await prisma.passwordResetToken.updateMany({
+      where: {
+        personel_id: personel.id,
+        kullanildi: false,
+      },
+      data: {
+        kullanildi: true, // Eski tokenları kullanıldı olarak işaretle
+      },
+    });
+
+    // 3. Yeni token oluştur ve DB'ye kaydet
+    const tokenExpiry = new Date();
+    tokenExpiry.setHours(tokenExpiry.getHours() + 1); // 1 saat geçerli
+
+    const resetToken = await prisma.passwordResetToken.create({
+      data: {
+        personel_id: personel.id,
+        tc_kimlik_no: personel.tc_kimlik_no,
+        email: personel.email,
+        expires_at: tokenExpiry,
+        ip_adresi: ip,
+      },
+    });
+
+    // 4. n8n'e email gönderme isteği yap (SADECE OPERASYONEL)
+    const resetUrl = `${process.env.NEXTAUTH_URL || 'https://halksagligi.fokusistatistik.com'}/sifre-yenile?token=${resetToken.token}`;
+
+    try {
+      await fetch(`${N8N_WEBHOOK_URL}/webhook/sifre-sifirla-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: personel.email,
+          ad: personel.ad,
+          soyad: personel.soyad,
+          reset_url: resetUrl,
+          expires_at: tokenExpiry.toISOString(),
+        }),
+      });
+    } catch (emailError) {
+      // Email gönderimi başarısız olsa bile token oluşturuldu
+      // Kullanıcıya success mesajı ver (token DB'de)
+    }
+
+    // 5. Başarılı log
     await logAktivite({
-      personel_id: data.personel_id,
-      personel_email: validated.email,
+      personel_id: personel.id,
+      personel_email: personel.email,
       islem: 'sifre.sifirla.talep',
       tablo: 'personel',
-      kayit_id: data.personel_id,
+      kayit_id: personel.id,
       aciklama: `Şifre sıfırlama talebi oluşturuldu`,
     });
 
@@ -128,8 +197,6 @@ export async function POST(request: NextRequest) {
       message: 'Şifre sıfırlama bağlantısı email adresinize gönderildi',
     });
   } catch (error: any) {
-    console.error('Şifre sıfırlama hatası:', error);
-
     // Zod validation hatası
     if (error.errors) {
       return NextResponse.json(

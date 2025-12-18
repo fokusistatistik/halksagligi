@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sifreYenileSchema } from '@/lib/validations/password';
 import { logAktivite } from '@/lib/log';
-
-const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.fokusistatistik.com';
+import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 /**
  * POST /api/sifre-yenile
- * Token ile şifre yeniler
- * n8n webhook'a proxy yapar
+ * Token ile şifre yeniler (TAMAMEN SUNUCUDA)
+ * 1. Token kontrol (DB'de)
+ * 2. Token expire kontrolü
+ * 3. Şifre güncelle (DB'de)
+ * 4. Token kullanıldı işaretle
  */
 export async function POST(request: NextRequest) {
   try {
@@ -16,45 +19,115 @@ export async function POST(request: NextRequest) {
     // Validation
     const validated = sifreYenileSchema.parse(body);
 
-    // IP adresi al
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-
-    // n8n webhook'a istek gönder
-    const response = await fetch(`${N8N_WEBHOOK_URL}/webhook/sifre-yenile`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...validated,
-        ip_adresi: ip,
-        user_agent: request.headers.get('user-agent'),
-      }),
+    // 1. Token'ı DB'de bul
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { token: validated.token },
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      // Log: Başarısız şifre yenileme
+    // Token bulunamadı
+    if (!resetToken) {
       await logAktivite({
-        islem: 'sifre.yenile.basarisiz',
+        islem: 'sifre.yenile.gecersiz_token',
         tablo: 'personel',
-        aciklama: `Şifre yenileme başarısız: ${data.error || 'Bilinmeyen hata'}`,
+        aciklama: `Geçersiz token ile şifre yenileme denemesi`,
       });
 
       return NextResponse.json(
-        { error: data.error || 'Şifre yenilenemedi' },
-        { status: response.status }
+        { error: 'Geçersiz veya süresi dolmuş şifre sıfırlama bağlantısı' },
+        { status: 400 }
       );
     }
 
-    // Log: Başarılı şifre yenileme
+    // Token zaten kullanılmış
+    if (resetToken.kullanildi) {
+      await logAktivite({
+        personel_id: resetToken.personel_id,
+        personel_email: resetToken.email,
+        islem: 'sifre.yenile.kullanilmis_token',
+        tablo: 'personel',
+        kayit_id: resetToken.personel_id,
+        aciklama: `Kullanılmış token ile şifre yenileme denemesi`,
+      });
+
+      return NextResponse.json(
+        { error: 'Bu şifre sıfırlama bağlantısı zaten kullanılmış. Lütfen yeni bir talepte bulunun.' },
+        { status: 400 }
+      );
+    }
+
+    // Token süresi dolmuş
+    if (new Date() > resetToken.expires_at) {
+      await logAktivite({
+        personel_id: resetToken.personel_id,
+        personel_email: resetToken.email,
+        islem: 'sifre.yenile.suresi_dolmus_token',
+        tablo: 'personel',
+        kayit_id: resetToken.personel_id,
+        aciklama: `Süresi dolmuş token ile şifre yenileme denemesi`,
+      });
+
+      // Token'ı kullanıldı olarak işaretle (güvenlik)
+      await prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { kullanildi: true },
+      });
+
+      return NextResponse.json(
+        { error: 'Şifre sıfırlama bağlantısının süresi dolmuş. Lütfen yeni bir talepte bulunun.' },
+        { status: 400 }
+      );
+    }
+
+    // 2. Personeli bul
+    const personel = await prisma.personel.findUnique({
+      where: { id: resetToken.personel_id },
+      select: {
+        id: true,
+        email: true,
+        ad: true,
+        soyad: true,
+        aktif: true,
+      },
+    });
+
+    if (!personel) {
+      return NextResponse.json(
+        { error: 'Kullanıcı bulunamadı' },
+        { status: 404 }
+      );
+    }
+
+    if (!personel.aktif) {
+      return NextResponse.json(
+        { error: 'Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin.' },
+        { status: 403 }
+      );
+    }
+
+    // 3. Yeni şifreyi hashle ve güncelle
+    const hashedPassword = await bcrypt.hash(validated.yeni_sifre, 10);
+
+    await prisma.personel.update({
+      where: { id: personel.id },
+      data: {
+        password: hashedPassword,
+        ilk_giris: false, // Şifre yenilendi, artık ilk giriş değil
+      },
+    });
+
+    // 4. Token'ı kullanıldı olarak işaretle
+    await prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { kullanildi: true },
+    });
+
+    // 5. Başarılı log
     await logAktivite({
-      personel_id: data.personel_id,
-      personel_email: data.email,
+      personel_id: personel.id,
+      personel_email: personel.email,
       islem: 'sifre.yenile',
       tablo: 'personel',
-      kayit_id: data.personel_id,
+      kayit_id: personel.id,
       aciklama: `Şifre token ile yenilendi`,
     });
 
@@ -63,8 +136,6 @@ export async function POST(request: NextRequest) {
       message: 'Şifre başarıyla yenilendi',
     });
   } catch (error: any) {
-    console.error('Şifre yenileme hatası:', error);
-
     // Zod validation hatası
     if (error.errors) {
       return NextResponse.json(

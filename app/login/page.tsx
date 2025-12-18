@@ -31,6 +31,7 @@ export default function LoginPage() {
         tc_kimlik_no: formData.tc_kimlik_no,
         password: formData.password,
         redirect: false,
+        callbackUrl: '/',
       });
 
       console.log('📊 SignIn result:', result);
@@ -40,8 +41,13 @@ export default function LoginPage() {
         setError(result.error);
       } else if (result?.ok) {
         console.log('✅ Login başarılı, redirect ediliyor...');
-        // Hard redirect to ensure session is loaded
-        window.location.href = '/';
+
+        // NextAuth'un kendi redirect URL'ini kullan (session cookie set olana kadar bekler)
+        if (result.url) {
+          window.location.href = result.url;
+        } else {
+          window.location.href = '/';
+        }
       } else {
         console.error('⚠️ Beklenmeyen durum:', result);
         setError('Beklenmeyen bir hata oluştu');

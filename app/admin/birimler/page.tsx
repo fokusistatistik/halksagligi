@@ -66,7 +66,7 @@ export default function BirimlerPage() {
       if (data.success) {
         setBirimler(data.data)
       }
-    } catch (error) {
+    } catch {
       toast.error('Birimler yüklenirken hata oluştu')
     } finally {
       setLoading(false)
@@ -77,7 +77,7 @@ export default function BirimlerPage() {
     e.preventDefault()
 
     try {
-      const payload: any = {
+      const payload: Record<string, string | boolean | null> = {
         ad: formData.ad,
         kod: formData.kod,
         tip: formData.tip,
@@ -122,7 +122,7 @@ export default function BirimlerPage() {
       } else {
         toast.error(data.error || 'İşlem başarısız')
       }
-    } catch (error) {
+    } catch {
       toast.error('Bir hata oluştu')
     }
   }
@@ -142,7 +142,7 @@ export default function BirimlerPage() {
       } else {
         toast.error(data.error || 'Silme başarısız')
       }
-    } catch (error) {
+    } catch {
       toast.error('Bir hata oluştu')
     }
   }

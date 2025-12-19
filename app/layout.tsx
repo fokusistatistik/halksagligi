@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ToastContainer } from '@/components/toast-container';
+import { Providers } from '@/components/providers';
+import SiteHeader from '@/components/site-header';
+import SiteFooter from '@/components/site-footer';
+import MobileNav from '@/components/mobile-nav';
 
 export const metadata: Metadata = {
   title: 'SAHA - Sağlık Hizmetleri Analitiği',
@@ -59,9 +63,16 @@ export default function RootLayout({
         <link rel="icon" href="https://static.fokusistatistik.com/resimler/favicon.png" />
         <link rel="shortcut icon" href="https://static.fokusistatistik.com/resimler/favicon.png" />
       </head>
-      <body className="font-sans">
-        {children}
-        <ToastContainer />
+      <body className="font-sans min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <Providers>
+          <SiteHeader />
+          <main className="flex-1">
+            {children}
+          </main>
+          <SiteFooter />
+          <MobileNav />
+          <ToastContainer />
+        </Providers>
       </body>
     </html>
   );

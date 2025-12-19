@@ -412,7 +412,7 @@ async function main() {
   console.log('✅ Admin kullanıcısı oluşturuldu')
   console.log('')
   console.log('🎉 Seed data tamamlandı!')
-  console.log('📧 Admin Email: admin@saglik.gov.tr')
+  console.log('🆔 Admin TC: 12345678901')
   console.log('🔒 Admin Şifre: admin123')
   console.log('')
 }

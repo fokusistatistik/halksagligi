@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -16,12 +16,12 @@ model Personel {
   id String @id @default(uuid())
 
   // ZORUNLU KİŞİSEL BİLGİLER
-  tc_kimlik_no String @unique @db.VarChar(11)
-  ad           String @db.VarChar(50)
-  soyad        String @db.VarChar(50)
-  email        String @unique @db.VarChar(100)
-  password     String @db.VarChar(255) // bcrypt hash
-  telefon      String @db.VarChar(15)
+  tc_kimlik_no String @unique
+  ad           String
+  soyad        String
+  email        String @unique
+  password     String // bcrypt hash
+  telefon      String
 
   // İLİŞKİLER
   rol_id          String
@@ -33,29 +33,29 @@ model Personel {
   alt_personeller Personel[] @relation("YoneticiAlt")
 
   // OPSİYONEL BİLGİLER
-  profil_foto_url String?   @db.VarChar(255)
-  sicil_no        String?   @db.VarChar(50)
-  unvan           String?   @db.VarChar(100)
-  dogum_tarihi    DateTime? @db.Date
-  cinsiyet        Cinsiyet?
-  adres           String?   @db.Text
-  il              String?   @default("Kocaeli") @db.VarChar(50)
-  ilce            String?   @db.VarChar(50)
+  profil_foto_url String?
+  sicil_no        String?
+  unvan           String?
+  dogum_tarihi    DateTime?
+  cinsiyet        String? // Enum: Cinsiyet
+  adres           String?
+  il              String?   @default("Kocaeli")
+  ilce            String?
 
   // İŞ BİLGİLERİ
-  ise_baslama_tarihi DateTime?     @db.Date
-  sozlesme_turu      SozlesmeTuru?
+  ise_baslama_tarihi DateTime?
+  sozlesme_turu      String? // Enum: SozlesmeTuru
 
   // ACİL DURUM
-  acil_durum_kisi    String? @db.VarChar(100)
-  acil_durum_telefon String? @db.VarChar(15)
+  acil_durum_kisi    String?
+  acil_durum_telefon String?
 
   // SİSTEM BİLGİLERİ
   aktif            Boolean   @default(true)
   ilk_giris        Boolean   @default(true) // Şifre değişimi için
-  notlar           String?   @db.Text
+  notlar           String?
   son_giris_tarihi DateTime?
-  son_giris_ip     String?   @db.VarChar(45)
+  son_giris_ip     String?
 
   // ZAMAN DAMGALARI
   created_at    DateTime @default(now())
@@ -70,19 +70,6 @@ model Personel {
   @@map("personel")
 }
 
-enum Cinsiyet {
-  ERKEK
-  KADIN
-  BELIRTMEK_ISTEMIYORUM
-}
-
-enum SozlesmeTuru {
-  KADROLU
-  SOZLESMELI
-  GECICI
-  STAJYER
-}
-
 // ============================================
 // 2. ROLLER TABLOSU
 // ============================================
@@ -90,12 +77,12 @@ model Rol {
   id String @id @default(uuid())
 
   // TEMEL BİLGİLER
-  kod      String  @unique @db.VarChar(50) // Sistem kodu
-  ad       String  @db.VarChar(100) // Görünen ad
-  aciklama String? @db.Text
-  seviye   Int     @db.Integer // 1-10 arası
-  renk     String  @default("#64748b") @db.VarChar(7) // Hex renk kodu
-  icon     String? @db.VarChar(50) // Lucide icon adı
+  kod      String  @unique // Sistem kodu
+  ad       String  // Görünen ad
+  aciklama String?
+  seviye   Int     // 1-10 arası
+  renk     String  @default("#64748b") // Hex renk kodu
+  icon     String? // Lucide icon adı
 
   // DURUM
   aktif Boolean @default(true)
@@ -120,10 +107,10 @@ model Yetki {
   id String @id @default(uuid())
 
   // TEMEL BİLGİLER
-  kod      String  @unique @db.VarChar(100) // Örn: gorev.olustur
-  ad       String  @db.VarChar(100)
-  kategori String  @db.VarChar(50) // GOREV, PERSONEL, BIRIM, vb.
-  aciklama String? @db.Text
+  kod      String  @unique // Örn: gorev.olustur
+  ad       String
+  kategori String  // GOREV, PERSONEL, BIRIM, vb.
+  aciklama String?
 
   // İLİŞKİLER
   roller RolYetki[]
@@ -159,10 +146,10 @@ model Birim {
   id String @id @default(uuid())
 
   // TEMEL BİLGİLER
-  ad            String       @db.VarChar(200)
-  kod           String       @unique @db.VarChar(50) // Örn: KORFEZ-ASM
-  tip           BirimTip
-  dis_birim_tip DisBirimTip? // Sadece DIS_BIRIM için: ASM, HSM, VSD, ILCE_SAGLIK
+  ad            String
+  kod           String       @unique // Örn: KORFEZ-ASM
+  tip           String       // Enum: BirimTip
+  dis_birim_tip String?      // Enum: DisBirimTip
 
   // HİYERARŞİ
   // Dış birimler için zorunlu - Müdürlük birimlerine bağlı olmalı
@@ -174,14 +161,14 @@ model Birim {
   sorumlu_kisi_id String?
 
   // İLETİŞİM
-  adres   String? @db.Text
-  telefon String? @db.VarChar(15)
-  email   String? @db.VarChar(100)
+  adres   String?
+  telefon String?
+  email   String?
 
   // DURUM
   aktif         Boolean   @default(true)
-  acilis_tarihi DateTime? @db.Date
-  notlar        String?   @db.Text
+  acilis_tarihi DateTime?
+  notlar        String?
 
   // İLİŞKİLER
   personeller    Personel[]
@@ -198,18 +185,6 @@ model Birim {
   @@map("birimler")
 }
 
-enum BirimTip {
-  MUDURLUK // Müdürlük Birimleri - Kendi modüllerini görür
-  DIS_BIRIM // Dış Birimler - Müdürlük birimlerine bağlı
-}
-
-enum DisBirimTip {
-  ASM // Aile Sağlığı Merkezi
-  HSM // Halk Sağlığı Merkezi (eski SHM)
-  VSD // Verem Savaş Dispanseri
-  ILCE_SAGLIK // İlçe Sağlık Müdürlüğü
-}
-
 // ============================================
 // 6. AKTİVİTE LOGLARI (Audit Trail)
 // ============================================
@@ -218,13 +193,13 @@ model AktiviteLog {
 
   // KULLANICI BİLGİSİ
   personel_id    String?
-  personel_email String? @db.VarChar(100)
+  personel_email String?
 
   // İŞLEM BİLGİSİ
-  islem    String  @db.VarChar(100) // personel.ekle, rol.guncelle, veri.onayla vb.
-  tablo    String  @db.VarChar(50) // personel, rol, birim, veri_giris
-  kayit_id String? @db.VarChar(255) // İşlem yapılan kaydın ID'si
-  aciklama String? @db.Text
+  islem    String  // personel.ekle, rol.guncelle, veri.onayla vb.
+  tablo    String  // personel, rol, birim, veri_giris
+  kayit_id String? // İşlem yapılan kaydın ID'si
+  aciklama String?
 
   created_at DateTime @default(now())
 
@@ -248,26 +223,26 @@ model SHMVeriGiris {
   personel_id String
 
   // TARİH BİLGİSİ
-  tarih DateTime @db.Date
+  tarih DateTime
 
   // VERİ ALANLARI (JSON olarak esnek tutulacak - her birim tipine göre değişir)
-  veri Json? // Esnek veri yapısı: { "alan": "değer", ... }
+  veri String? // Esnek veri yapısı: { "alan": "değer", ... } (SQLite JSON desteği yok, string olarak saklayacağız)
 
   // NOTLAR VE AÇIKLAMALAR
-  aciklama String? @db.Text
-  notlar   String? @db.Text
+  aciklama String?
+  notlar   String?
 
   // WEBHOOK SENKRONİZASYONU
   webhook_gonderildi      Boolean   @default(false)
   webhook_gonderim_tarihi DateTime?
-  webhook_yanit           Json?
+  webhook_yanit           String?   // JSON string
 
   // ONAY DURUMU
-  onay_durumu           OnayDurumu @default(BEKLEMEDE)
+  onay_durumu           String @default("BEKLEMEDE") // Enum: OnayDurumu
   onaylayan_personel_id String?
   onay_tarihi           DateTime?
-  onay_notu             String?    @db.Text
-  red_gerekce           String?    @db.Text // Red gerekçesi
+  onay_notu             String?
+  red_gerekce           String? // Red gerekçesi
 
   // ZAMAN DAMGALARI
   created_at    DateTime @default(now())
@@ -283,24 +258,18 @@ model SHMVeriGiris {
   @@map("shm_veri_giris")
 }
 
-enum OnayDurumu {
-  BEKLEMEDE
-  ONAYLANDI
-  REDDEDILDI
-}
-
 // ============================================
 // 8. ŞİFRE SIFIRLAMA TOKEN
 // ============================================
 model PasswordResetToken {
   id           String   @id @default(uuid())
   personel_id  String
-  tc_kimlik_no String   @db.VarChar(11)
-  email        String   @db.VarChar(100)
+  tc_kimlik_no String
+  email        String
   token        String   @unique @default(uuid())
   expires_at   DateTime
   kullanildi   Boolean  @default(false)
-  ip_adresi    String?  @db.VarChar(45)
+  ip_adresi    String?
   created_at   DateTime @default(now())
 
   @@index([token])

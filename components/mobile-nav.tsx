@@ -63,7 +63,7 @@ export default function MobileNav() {
 
       {/* Bottom Navigation */}
       <nav
-        className="mobile-nav-bottom bg-white border-t border-gray-200 shadow-lg md:hidden"
+        className="mobile-nav-bottom bg-white/90 backdrop-blur-md border-t border-gray-200/50 shadow-lg md:hidden"
         role="navigation"
         aria-label="Mobile navigation"
       >
@@ -80,24 +80,21 @@ export default function MobileNav() {
                   flex flex-col items-center justify-center
                   flex-1 h-full gap-1
                   transition-colors duration-200
-                  ${
-                    isActive
-                      ? 'text-blue-600'
-                      : 'text-gray-600 hover:text-gray-900'
+                  ${isActive
+                    ? 'text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
                   }
                 `}
                 aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
               >
                 <Icon
-                  className={`w-6 h-6 ${
-                    isActive ? 'stroke-[2.5]' : 'stroke-2'
-                  }`}
+                  className={`w-6 h-6 ${isActive ? 'stroke-[2.5]' : 'stroke-2'
+                    }`}
                 />
                 <span
-                  className={`text-xs font-medium ${
-                    isActive ? 'font-semibold' : ''
-                  }`}
+                  className={`text-xs font-medium ${isActive ? 'font-semibold' : ''
+                    }`}
                 >
                   {item.label}
                 </span>

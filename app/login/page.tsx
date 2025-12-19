@@ -1,21 +1,19 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn, AlertCircle } from 'lucide-react';
 import PasswordInput from '@/components/password-input';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     tc_kimlik_no: '',
     password: '',
   });
-  const isSubmitting = useRef(false);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -25,9 +23,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Prevent double submission
-    if (isSubmitting.current) return;
-    isSubmitting.current = true;
+    if (loading) return;
 
     setError('');
     setLoading(true);
@@ -36,24 +32,19 @@ export default function LoginPage() {
       const result = await signIn('credentials', {
         tc_kimlik_no: formData.tc_kimlik_no,
         password: formData.password,
-        redirect: false, // Manual redirect control
+        redirect: false,
       });
 
-      // Check result
       if (result?.ok) {
-        // Success - redirect to home
-        router.replace('/');
+        // Force full reload to ensure cookies are picked up
+        window.location.href = '/';
       } else {
-        // Error from NextAuth
-        const errorMessage = result?.error || 'Giriş başarısız. Lütfen tekrar deneyin.';
-        setError(errorMessage);
+        setError(result?.error || 'Giriş başarısız. Lütfen tekrar deneyin.');
         setLoading(false);
-        isSubmitting.current = false;
       }
     } catch (err: any) {
-      setError(err?.message || 'Giriş başarısız. Lütfen tekrar deneyin.');
+      setError('Bir hata oluştu. Lütfen tekrar deneyin.');
       setLoading(false);
-      isSubmitting.current = false;
     }
   };
 

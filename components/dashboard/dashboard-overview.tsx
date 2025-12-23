@@ -104,7 +104,7 @@ const KocaeliMap = ({ selectedDistrict, onSelect }: { selectedDistrict: string, 
                     </g>
                 ))}
             </svg>
-            {selectedDistrict && (
+            {selectedDistrict && selectedDistrict !== 'all' && (
                 <div className="absolute bottom-4 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-100 max-w-xs">
                     <h4 className="font-bold text-gray-800">{selectedDistrict}</h4>
                     <div className="text-xs text-gray-600 mt-1">
@@ -128,7 +128,7 @@ const KocaeliMap = ({ selectedDistrict, onSelect }: { selectedDistrict: string, 
 };
 
 export default function DashboardOverview() {
-    const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+    const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
     const [filterType, setFilterType] = useState('all');
 
     return (
@@ -168,7 +168,7 @@ export default function DashboardOverview() {
                             <SelectValue placeholder="İlçe Seçin" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">Tümü</SelectItem>
+                            <SelectItem value="all">Tümü</SelectItem>
                             {districtData.map(d => (
                                 <SelectItem key={d.name} value={d.name}>{d.name}</SelectItem>
                             ))}

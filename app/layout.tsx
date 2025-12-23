@@ -25,9 +25,9 @@ export const metadata: Metadata = {
     follow: false,
   },
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
+    icon: 'https://static.fokusistatistik.com/resimler/favicon.png',
+    shortcut: 'https://static.fokusistatistik.com/resimler/favicon.png',
+    apple: 'https://static.fokusistatistik.com/resimler/favicon.png',
   },
 };
 

@@ -15,10 +15,12 @@ interface Kullanici {
   telefon?: string;
   aktif: boolean;
   rol: {
+    id: string;
     ad: string;
     kod: string;
   };
   birim: {
+    id: string;
     ad: string;
     kod: string;
   };
@@ -56,7 +58,7 @@ export default function KullanicilarPage() {
     rol_id: '',
     birim_id: '',
     aktif: true,
-    sifre: '' // Sadece yeni kullanıcı için
+    password: '' // Sadece yeni kullanıcı için
   });
 
   useEffect(() => {
@@ -164,10 +166,10 @@ export default function KullanicilarPage() {
       soyad: kullanici.soyad,
       email: kullanici.email,
       telefon: kullanici.telefon || '',
-      rol_id: '', // Rol ID'sini kullanıcı verisinden almanız gerekiyor
-      birim_id: '', // Birim ID'sini kullanıcı verisinden almanız gerekiyor
+      rol_id: kullanici.rol.id,
+      birim_id: kullanici.birim.id,
       aktif: kullanici.aktif,
-      sifre: ''
+      password: ''
     });
     setShowModal(true);
   };
@@ -182,7 +184,7 @@ export default function KullanicilarPage() {
       rol_id: '',
       birim_id: '',
       aktif: true,
-      sifre: ''
+      password: ''
     });
     setEditingKullanici(null);
   };
@@ -311,9 +313,8 @@ export default function KullanicilarPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => toggleAktif(kullanici)}
-                            className={`p-2 hover:bg-gray-100 rounded ${
-                              kullanici.aktif ? 'text-orange-600' : 'text-green-600'
-                            }`}
+                            className={`p-2 hover:bg-gray-100 rounded ${kullanici.aktif ? 'text-orange-600' : 'text-green-600'
+                              }`}
                             title={kullanici.aktif ? 'Pasif Et' : 'Aktif Et'}
                           >
                             {kullanici.aktif ? (
@@ -367,6 +368,7 @@ export default function KullanicilarPage() {
                     onChange={(e) => setFormData({ ...formData, tc_kimlik_no: e.target.value })}
                     required
                     maxLength={11}
+                    autoComplete="off"
                     placeholder="11 haneli TC"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
                   />
@@ -381,6 +383,7 @@ export default function KullanicilarPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
+                    autoComplete="off"
                     placeholder="ornek@saglik.gov.tr"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
                   />
@@ -466,8 +469,8 @@ export default function KullanicilarPage() {
                     </label>
                     <input
                       type="password"
-                      value={formData.sifre}
-                      onChange={(e) => setFormData({ ...formData, sifre: e.target.value })}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       required={!editingKullanici}
                       placeholder="Geçici şifre"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"

@@ -45,7 +45,15 @@ export async function PUT(
     const body = await request.json()
     const { password, ...updateData } = body
 
-    if (password) {
+    // Temizleme: Boş string olan (ama zorunlu olmayan) alanları null yap
+    // Veya rol_id, birim_id gibi alanlar boş gelirse hata vermesini önlemek için sil
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === '') {
+        delete updateData[key];
+      }
+    });
+
+    if (password && password.trim() !== '') {
       updateData.password = await bcrypt.hash(password, 10)
     }
 
@@ -66,8 +74,25 @@ export async function PUT(
 
     const { password: _, ...safe } = updatedPersonel
     return NextResponse.json({ success: true, data: safe })
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  } catch (error: any) {
+    console.error('Personel güncelleme hatası:', error)
+
+    // Prisma Unique Constraint Error (P2002)
+    if (error.code === 'P2002') {
+      const target = error.meta?.target || []
+      const fieldName = Array.isArray(target) ? target.join(', ') : String(target)
+
+      let message = 'Bu kayıt zaten mevcut'
+      if (fieldName.includes('tc_kimlik_no')) message = 'Bu TC Kimlik No zaten kayıtlı'
+      if (fieldName.includes('email')) message = 'Bu email adresi zaten kullanılıyor'
+
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+
+    return NextResponse.json({
+      error: 'Internal Server Error',
+      message: error.message
+    }, { status: 500 })
   }
 }
 

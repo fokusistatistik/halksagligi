@@ -71,7 +71,7 @@ export async function GET(_request: NextRequest) {
       data: birimler
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Birimler listesi hatası:', error);
     return NextResponse.json(
       { success: false, error: 'Birimler listelenirken bir hata oluştu' },
@@ -120,8 +120,8 @@ export async function POST(request: NextRequest) {
       data: {
         ad: validated.ad,
         kod: validated.kod,
-        tip: validated.tip as any,
-        dis_birim_tip: validated.dis_birim_tip as any,
+        tip: validated.tip as 'MUDURLUK' | 'DIS_BIRIM',
+        dis_birim_tip: validated.dis_birim_tip as 'ASM' | 'HSM' | 'VSD' | 'ILCE_SAGLIK' | null,
         ust_birim_id: validated.ust_birim_id,
         telefon: validated.telefon,
         email: validated.email,
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       message: 'Birim oluşturuldu'
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Birim oluşturma hatası:', error);
 
     if (error instanceof z.ZodError) {

@@ -50,7 +50,7 @@ export default function MudurlukLayout({
                     </CardHeader>
                     <CardContent>
                         <p className="text-red-700">
-                            {`Bu modüle erişim yetkiniz bulunmamaktadır. Bu alan sadece İl Sağlık Müdürlüğü birimleri ("MUDURLUK") içindir.`}
+                            Bu modüle erişim yetkiniz bulunmamaktadır. Bu alan sadece İl Sağlık Müdürlüğü birimleri (&quot;MUDURLUK&quot;) içindir.
                         </p>
                     </CardContent>
                 </Card>

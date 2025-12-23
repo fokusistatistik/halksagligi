@@ -116,8 +116,9 @@ export default function KullanicilarPage() {
       setShowModal(false);
       resetForm();
       loadData();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
     }
   };
 
@@ -136,7 +137,7 @@ export default function KullanicilarPage() {
         const data = await res.json();
         toast.error(data.error || 'Silme başarısız');
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error('Bir hata oluştu');
     }
   };
@@ -153,7 +154,7 @@ export default function KullanicilarPage() {
         toast.success(`Kullanıcı ${!kullanici.aktif ? 'aktif' : 'pasif'} edildi`);
         loadData();
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error('İşlem başarısız');
     }
   };

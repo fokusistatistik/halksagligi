@@ -58,7 +58,12 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Build where clause
-    const where: any = {}
+    const where: {
+      birim_id?: string;
+      rol_id?: string;
+      aktif?: boolean;
+      OR?: any[];
+    } = {}
 
     // Birim yöneticisi sadece kendi birimini görebilir
     if (user.rol.kod === 'BIRIM_YONETICISI') {
@@ -107,8 +112,8 @@ export async function GET(request: NextRequest) {
     })
 
     // Remove passwords
-    const safePersoneller = personeller.map((p: any) => {
-      const { password, ...rest } = p
+    const safePersoneller = personeller.map((p) => {
+      const { password: _password, ...rest } = p
       return rest
     })
 
@@ -241,6 +246,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.error('Personel ekleme hatası:', error)
-    return NextResponse.json({ error: 'Sistem Hatası: ' + (error as any).message }, { status: 500 })
+    const err = error as Error;
+    return NextResponse.json({ error: 'Sistem Hatası: ' + err.message }, { status: 500 })
   }
 }

@@ -23,9 +23,9 @@ export async function GET(
       return NextResponse.json({ error: 'Personel bulunamadı' }, { status: 404 })
     }
 
-    const { password, ...safePersonel } = personel
+    const { password: _password, ...safePersonel } = personel
     return NextResponse.json({ success: true, data: safePersonel })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
@@ -127,7 +127,7 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true, message: 'Personel silindi' })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

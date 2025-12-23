@@ -21,7 +21,7 @@ export async function GET(_request: NextRequest) {
     })
 
     return NextResponse.json({ success: true, data: birimler })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const birim = await prisma.birim.create({ data: body })
 
     return NextResponse.json({ success: true, data: birim }, { status: 201 })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

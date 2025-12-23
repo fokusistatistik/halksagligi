@@ -42,6 +42,8 @@ const nextConfig = {
         tls: false,
       };
     }
+    // PWA manifest and other externals
+    config.externals = [...(config.externals || [])];
     return config;
   },
 

@@ -146,8 +146,21 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    // Veri temizleme: Boş stringleri temizle veya null yap
+    const cleanedBody = { ...body };
+    Object.keys(cleanedBody).forEach(key => {
+      if (cleanedBody[key] === '' && key !== 'password') {
+        delete cleanedBody[key];
+      }
+    });
+
+    // Eğer şifre boşsa tamamen sil (Zod optional olduğu için sorun çıkarmaz)
+    if (cleanedBody.password === '') {
+      delete cleanedBody.password;
+    }
+
     // Validation
-    const validatedData = personelSchema.parse(body)
+    const validatedData = personelSchema.parse(cleanedBody)
 
     // TC Kimlik kontrolü
     const mevcutTC = await prisma.personel.findUnique({
@@ -217,13 +230,17 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     if (error instanceof z.ZodError) {
+      const messages = error.errors.map(err => {
+        return `${err.path.join('.')}: ${err.message}`;
+      }).join(', ');
+
       return NextResponse.json(
-        { error: 'Validation Error', details: error.errors },
+        { error: `Doğrulama Hatası: ${messages}`, details: error.errors },
         { status: 400 }
       )
     }
 
     console.error('Personel ekleme hatası:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Sistem Hatası: ' + (error as any).message }, { status: 500 })
   }
 }

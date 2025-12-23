@@ -3,6 +3,7 @@ import { getCurrentUser, canManagePersonel } from '@/lib/auth/permissions'
 import { prisma } from '@/lib/prisma'
 import { logAktivite } from '@/lib/log'
 import bcrypt from 'bcryptjs'
+import { z } from 'zod'
 
 export async function GET(
   _request: NextRequest,
@@ -76,6 +77,11 @@ export async function PUT(
     return NextResponse.json({ success: true, data: safe })
   } catch (error: any) {
     console.error('Personel güncelleme hatası:', error)
+
+    if (error instanceof z.ZodError) {
+      const messages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
+      return NextResponse.json({ error: `Doğrulama Hatası: ${messages}` }, { status: 400 })
+    }
 
     // Prisma Unique Constraint Error (P2002)
     if (error.code === 'P2002') {

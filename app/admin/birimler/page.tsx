@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Building2, Plus, Edit, Trash2, Search, Building, MapPin } from 'lucide-react'
+import { Building2, Plus, Edit, Trash2, Search, Building, MapPin, X } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { TableSkeleton } from '@/components/loading-skeleton'
 import { EmptyState } from '@/components/empty-state'
@@ -76,14 +76,30 @@ export default function BirimlerPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Form validasyonları
+    if (formData.ad.trim().length < 3) {
+      toast.error('Birim adı en az 3 karakter olmalıdır')
+      return
+    }
+
+    if (formData.kod.trim().length < 2) {
+      toast.error('Birim kodu en az 2 karakter olmalıdır')
+      return
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast.error('Geçerli bir e-posta adresi giriniz')
+      return
+    }
+
     try {
       const payload: Record<string, string | boolean | null> = {
-        ad: formData.ad,
-        kod: formData.kod,
+        ad: formData.ad.trim(),
+        kod: formData.kod.trim().toUpperCase(),
         tip: formData.tip,
-        telefon: formData.telefon || null,
-        email: formData.email || null,
-        adres: formData.adres || null,
+        telefon: formData.telefon.trim() || null,
+        email: formData.email.trim() || null,
+        adres: formData.adres.trim() || null,
         aktif: formData.aktif
       }
 
@@ -242,7 +258,9 @@ export default function BirimlerPage() {
                   {mudurlukBirimleri.map((birim) => (
                     <div
                       key={birim.id}
-                      className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow"
+                      className={`rounded-lg shadow p-6 hover:shadow-md transition-all ${
+                        !birim.aktif ? 'bg-gray-100 border-2 border-red-200 opacity-70' : 'bg-white'
+                      }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -252,7 +270,8 @@ export default function BirimlerPage() {
                               {birim.kod}
                             </span>
                             {!birim.aktif && (
-                              <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">
+                              <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded-full border border-red-300 flex items-center gap-1">
+                                <div className="w-2 h-2 bg-red-500 rounded-full" />
                                 Pasif
                               </span>
                             )}
@@ -302,7 +321,9 @@ export default function BirimlerPage() {
                   {disBirimleri.map((birim) => (
                     <div
                       key={birim.id}
-                      className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow"
+                      className={`rounded-lg shadow p-6 hover:shadow-md transition-all ${
+                        !birim.aktif ? 'bg-gray-100 border-2 border-red-200 opacity-70' : 'bg-white'
+                      }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -317,7 +338,8 @@ export default function BirimlerPage() {
                               </span>
                             )}
                             {!birim.aktif && (
-                              <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">
+                              <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded-full border border-red-300 flex items-center gap-1">
+                                <div className="w-2 h-2 bg-red-500 rounded-full" />
                                 Pasif
                               </span>
                             )}
@@ -360,10 +382,19 @@ export default function BirimlerPage() {
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">
                   {editingBirim ? 'Birim Düzenle' : 'Yeni Birim Ekle'}
                 </h2>
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 space-y-4">

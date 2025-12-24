@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, UserCheck, UserX, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, UserCheck, UserX, Search, X } from 'lucide-react';
 import { TableSkeleton } from '@/components/loading-skeleton';
 import { NoDataFound } from '@/components/empty-state';
 import { toast } from '@/lib/toast';
@@ -90,8 +90,38 @@ export default function KullanicilarPage() {
     }
   };
 
+  const validateTC = (tc: string): boolean => {
+    if (tc.length !== 11) return false;
+    if (!/^\d+$/.test(tc)) return false;
+    if (tc[0] === '0') return false;
+    return true;
+  };
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // TC Kimlik validasyonu
+    if (!validateTC(formData.tc_kimlik_no)) {
+      toast.error('Geçerli bir TC Kimlik No giriniz (11 hane, rakamlardan oluşmalı)');
+      return;
+    }
+
+    // Email validasyonu
+    if (!validateEmail(formData.email)) {
+      toast.error('Geçerli bir e-posta adresi giriniz');
+      return;
+    }
+
+    // Şifre validasyonu (yeni kullanıcı için)
+    if (!editingKullanici && formData.password.length < 6) {
+      toast.error('Şifre en az 6 karakter olmalıdır');
+      return;
+    }
 
     try {
       const url = editingKullanici
@@ -282,7 +312,12 @@ export default function KullanicilarPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredKullanicilar.map((kullanici) => (
-                    <tr key={kullanici.id} className="hover:bg-gray-50">
+                    <tr
+                      key={kullanici.id}
+                      className={`hover:bg-gray-50 transition-colors ${
+                        !kullanici.aktif ? 'bg-gray-100 opacity-60' : ''
+                      }`}
+                    >
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         <div>{kullanici.ad} {kullanici.soyad}</div>
                         <div className="text-xs text-gray-500">{kullanici.tc_kimlik_no}</div>
@@ -301,11 +336,13 @@ export default function KullanicilarPage() {
                       </td>
                       <td className="px-6 py-4">
                         {kullanici.aktif ? (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 flex items-center gap-1 w-fit">
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
                             Aktif
                           </span>
                         ) : (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 flex items-center gap-1 w-fit border border-red-200">
+                            <div className="w-2 h-2 bg-red-500 rounded-full" />
                             Pasif
                           </span>
                         )}
@@ -351,10 +388,19 @@ export default function KullanicilarPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
+            <div className="p-6 border-b flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">
                 {editingKullanici ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı Oluştur'}
               </h2>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -366,11 +412,15 @@ export default function KullanicilarPage() {
                   <input
                     type="text"
                     value={formData.tc_kimlik_no}
-                    onChange={(e) => setFormData({ ...formData, tc_kimlik_no: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      setFormData({ ...formData, tc_kimlik_no: value });
+                    }}
                     required
                     maxLength={11}
                     autoComplete="off"
                     placeholder="11 haneli TC"
+                    pattern="\d{11}"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
                   />
                 </div>

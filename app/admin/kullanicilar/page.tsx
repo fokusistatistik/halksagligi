@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, UserCheck, UserX, Search, X } from 'lucide-react';
 import { TableSkeleton } from '@/components/loading-skeleton';
 import { NoDataFound } from '@/components/empty-state';
 import { toast } from '@/lib/toast';
+import { confirmDialog } from '@/lib/confirm-dialog';
 
 interface Kullanici {
   id: string;
@@ -153,7 +154,12 @@ export default function KullanicilarPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
+    const confirmed = await confirmDialog.danger(
+      'Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+      'Kullanıcı Sil'
+    );
+
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/personel/${id}`, {
@@ -161,7 +167,7 @@ export default function KullanicilarPage() {
       });
 
       if (res.ok) {
-        toast.success('Kullanıcı silindi');
+        toast.success('Kullanıcı başarıyla silindi');
         loadData();
       } else {
         const data = await res.json();

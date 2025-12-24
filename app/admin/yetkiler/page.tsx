@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Shield, Plus, Edit2, Trash2, X, Check, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from '@/lib/toast';
+import { confirmDialog } from '@/lib/confirm-dialog';
 import { TableSkeleton } from '@/components/loading-skeleton';
 
 interface Yetki {
@@ -133,16 +134,19 @@ export default function YetkilerPage() {
       return;
     }
 
-    if (!confirm(`"${rol.ad}" rolünü silmek istediğinizden emin misiniz?`)) {
-      return;
-    }
+    const confirmed = await confirmDialog.danger(
+      `"${rol.ad}" rolünü silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+      'Rol Sil'
+    );
+
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/rol/${rol.id}`, { method: 'DELETE' });
       const data = await res.json();
 
       if (data.success) {
-        toast.success('Rol silindi');
+        toast.success('Rol başarıyla silindi');
         loadData();
       } else {
         toast.error(data.error || 'Silme başarısız');

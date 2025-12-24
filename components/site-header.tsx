@@ -43,19 +43,19 @@ export default function SiteHeader() {
     return (
         <>
             <header className="sticky top-0 z-40 w-full border-b bg-white shadow-sm">
-                <div className="container flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center gap-6">
-                        <Link href="/" className="flex items-center gap-2">
+                <div className="container flex h-14 md:h-16 items-center justify-between px-3 sm:px-6 lg:px-8">
+                    <div className="flex items-center gap-3 md:gap-6">
+                        <Link href="/" className="flex items-center gap-1 md:gap-2">
                             <img
                                 src="https://static.fokusistatistik.com/resimler/kism.png"
                                 alt="Kocaeli İSM"
-                                className="h-10 w-auto"
+                                className="h-8 md:h-10 w-auto"
                             />
-                            <span className="text-gray-300 mx-2">|</span>
+                            <span className="text-gray-300 mx-1 md:mx-2 hidden sm:inline">|</span>
                             <img
                                 src="https://static.fokusistatistik.com/resimler/saha.jpg"
                                 alt="SAHA"
-                                className="h-10 w-auto rounded-md"
+                                className="h-8 md:h-10 w-auto rounded-md"
                             />
                         </Link>
 
@@ -128,8 +128,8 @@ export default function SiteHeader() {
                         </nav>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
+                    <div className="flex items-center gap-2 md:gap-4">
+                        <Button variant="ghost" size="icon" className="hidden sm:flex text-gray-500 hover:text-gray-700">
                             <Bell className="h-5 w-5" />
                             <span className="sr-only">Bildirimler</span>
                         </Button>

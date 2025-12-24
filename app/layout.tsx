@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ToastContainer } from '@/components/toast-container';
+import { ConfirmDialogContainer } from '@/components/confirm-dialog';
 import { Providers } from '@/components/providers';
 import SiteHeader from '@/components/site-header';
 import SiteFooter from '@/components/site-footer';
@@ -72,6 +73,7 @@ export default function RootLayout({
           <SiteFooter />
           <MobileNav />
           <ToastContainer />
+          <ConfirmDialogContainer />
         </Providers>
       </body>
     </html>

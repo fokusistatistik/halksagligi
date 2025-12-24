@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Building2, Plus, Edit, Trash2, Search, Building, MapPin, X } from 'lucide-react'
 import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm-dialog'
 import { TableSkeleton } from '@/components/loading-skeleton'
 import { EmptyState } from '@/components/empty-state'
 
@@ -144,16 +145,19 @@ export default function BirimlerPage() {
   }
 
   const handleDelete = async (birim: Birim) => {
-    if (!confirm(`"${birim.ad}" birimini silmek istediğinizden emin misiniz?`)) {
-      return
-    }
+    const confirmed = await confirmDialog.danger(
+      `"${birim.ad}" birimini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+      'Birim Sil'
+    )
+
+    if (!confirmed) return
 
     try {
       const res = await fetch(`/api/birim/${birim.id}`, { method: 'DELETE' })
       const data = await res.json()
 
       if (data.success) {
-        toast.success('Birim silindi')
+        toast.success('Birim başarıyla silindi')
         fetchBirimler()
       } else {
         toast.error(data.error || 'Silme başarısız')

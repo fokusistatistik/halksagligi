@@ -39,165 +39,167 @@ const performansData = [
     { name: 'Bekleyen', value: 80, color: '#ef4444' },
 ];
 
-// Real-time system data
-// Redundant system health data removed
-
-
-// Kocaeli Map Component with proper rendering
+// Kocaeli Map Component - 1076x800 aspect ratio
 const KocaeliMap = ({ selectedDistrict, onSelect }: { selectedDistrict: string, onSelect: (d: string) => void }) => {
     const districts = [
-        { id: 'kandira', name: 'Kandıra', x: 65, y: 15, r: 8 },
-        { id: 'izmit', name: 'İzmit', x: 50, y: 45, r: 10 },
-        { id: 'derince', name: 'Derince', x: 45, y: 50, r: 7 },
-        { id: 'korfez', name: 'Körfez', x: 35, y: 52, r: 8 },
-        { id: 'dilovasi', name: 'Dilovası', x: 25, y: 58, r: 6 },
-        { id: 'gebze', name: 'Gebze', x: 18, y: 65, r: 10 },
-        { id: 'cayirova', name: 'Çayırova', x: 12, y: 72, r: 7 },
-        { id: 'darica', name: 'Darıca', x: 8, y: 80, r: 7 },
-        { id: 'kartepe', name: 'Kartepe', x: 60, y: 52, r: 8 },
-        { id: 'basiskele', name: 'Başiskele', x: 52, y: 60, r: 8 },
-        { id: 'golcuk', name: 'Gölcük', x: 42, y: 68, r: 8 },
-        { id: 'karamursel', name: 'Karamürsel', x: 32, y: 78, r: 7 },
+        { id: 'kandira', name: 'Kandıra', x: 74, y: 22, r: 12 },
+        { id: 'izmit', name: 'İzmit', x: 57, y: 67, r: 14 },
+        { id: 'kartepe', name: 'Kartepe', x: 72, y: 70, r: 12 },
+        { id: 'basiskele', name: 'Başiskele', x: 58, y: 78, r: 11 },
+        { id: 'derince', name: 'Derince', x: 50, y: 67, r: 11 },
+        { id: 'korfez', name: 'Körfez', x: 42, y: 67, r: 12 },
+        { id: 'golcuk', name: 'Gölcük', x: 45, y: 76, r: 11 },
+        { id: 'karamursel', name: 'Karamürsel', x: 28, y: 82, r: 10 },
+        { id: 'dilovasi', name: 'Dilovası', x: 32, y: 67, r: 10 },
+        { id: 'gebze', name: 'Gebze', x: 20, y: 65, r: 14 },
+        { id: 'cayirova', name: 'Çayırova', x: 12, y: 62, r: 10 },
+        { id: 'darica', name: 'Darıca', x: 14, y: 75, r: 10 },
     ];
 
     return (
-        <div className="relative w-full h-full bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-xl border border-blue-100">
-            {/* Map Title */}
-            <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 shadow-sm z-10">
-                🗺️ Kocaeli İl Haritası
+        <div className="relative w-full flex flex-col bg-slate-900 rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl">
+            {/* Map Container - Maintains 1076x800 aspect ratio */}
+            <div className="relative w-full" style={{ aspectRatio: '1076 / 800' }}>
+                {/* Map Overlay Info */}
+                <div className="absolute top-4 left-4 z-10">
+                    <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-2xl flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        KOCAELİ OPERASYONEL SAHA GÖRÜNÜMÜ
+                    </div>
+                </div>
+
+                {/* SVG Map - Full coverage without zoom */}
+                <svg
+                    viewBox="0 0 1076 800"
+                    className="w-full h-full"
+                    preserveAspectRatio="xMidYMid meet"
+                >
+                    {/* Background Satellite Image */}
+                    <image
+                        href="https://static.fokusistatistik.com/halksagligi/genel/kocaelimap.jpg"
+                        x="0"
+                        y="0"
+                        width="1076"
+                        height="800"
+                        preserveAspectRatio="xMidYMid meet"
+                        className="opacity-90"
+                    />
+
+                    {/* Subtle Overlay */}
+                    <rect x="0" y="0" width="1076" height="800" fill="rgba(15, 23, 42, 0.15)" />
+
+                    {/* Districts Layer - Scaled for 1076x800 */}
+                    {districts.map((d) => {
+                        const scaledX = (d.x / 100) * 1076;
+                        const scaledY = (d.y / 100) * 800;
+                        const scaledR = (d.r / 100) * 40;
+
+                        return (
+                            <g
+                                key={d.id}
+                                onClick={() => onSelect(d.name)}
+                                className="cursor-pointer transition-all duration-300 hover:opacity-100"
+                            >
+                                {/* Outer Glow for selected */}
+                                {selectedDistrict === d.name && (
+                                    <circle
+                                        cx={scaledX}
+                                        cy={scaledY}
+                                        r={scaledR + 15}
+                                        fill="white"
+                                        opacity="0.2"
+                                        className="animate-ping"
+                                    />
+                                )}
+
+                                {/* Main Bubble */}
+                                <circle
+                                    cx={scaledX}
+                                    cy={scaledY}
+                                    r={scaledR}
+                                    className={`
+                                        transition-all duration-300
+                                        ${selectedDistrict === d.name
+                                            ? 'fill-primary stroke-white stroke-[3]'
+                                            : 'fill-white/20 stroke-white/50 stroke-[2] hover:fill-primary/40 hover:stroke-white'
+                                        }
+                                    `}
+                                    style={{ filter: 'drop-shadow(0 0 10px rgba(0,0,0,0.6))' }}
+                                />
+
+                                {/* District Label */}
+                                <g transform={`translate(${scaledX}, ${scaledY - scaledR - 15})`}>
+                                    <rect
+                                        x="-35"
+                                        y="-12"
+                                        width="70"
+                                        height="20"
+                                        rx="10"
+                                        className={`${selectedDistrict === d.name ? 'fill-primary' : 'fill-slate-900/90'}`}
+                                    />
+                                    <text
+                                        textAnchor="middle"
+                                        dominantBaseline="middle"
+                                        className={`
+                                            text-xs font-black tracking-tight select-none pointer-events-none uppercase
+                                            ${selectedDistrict === d.name ? 'fill-white' : 'fill-white/90'}
+                                        `}
+                                    >
+                                        {d.name}
+                                    </text>
+                                </g>
+                            </g>
+                        );
+                    })}
+                </svg>
             </div>
 
-            {/* SVG Map */}
-            <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                {/* Background sea effect */}
-                <defs>
-                    <linearGradient id="seaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#dbeafe" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#bfdbfe" stopOpacity="0.5" />
-                    </linearGradient>
-                </defs>
-
-                {/* Kocaeli Map Background Image */}
-                <image
-                    href="https://static.fokusistatistik.com/resimler/kocaeli-il-haritasi.png?v=3"
-                    x="0"
-                    y="0"
-                    width="100"
-                    height="100"
-                    preserveAspectRatio="xMidYMid meet"
-                    className="opacity-70"
-                />
-
-                {/* Sea area (Marmara) - Keep it subtle behind the map if needed, or remove for clarity */}
-                {/* <rect x="0" y="0" width="100" height="100" fill="url(#seaGradient)" opacity="0.2" /> */}
-
-                {/* Connection lines */}
-                {districts.map((d, i) => {
-                    if (i < districts.length - 1) {
-                        const next = districts[i + 1];
-                        return (
-                            <line
-                                key={`line-${d.id}`}
-                                x1={d.x}
-                                y1={d.y}
-                                x2={next.x}
-                                y2={next.y}
-                                stroke="#cbd5e1"
-                                strokeWidth="0.3"
-                                strokeDasharray="1 1"
-                                opacity="0.4"
-                            />
-                        );
-                    }
-                    return null;
-                })}
-
-                {/* Districts */}
-                {districts.map((d) => (
-                    <g
-                        key={d.id}
-                        onClick={() => onSelect(d.name)}
-                        className="cursor-pointer transition-all duration-200"
-                        style={{ transformOrigin: `${d.x}% ${d.y}%` }}
-                    >
-                        {/* Glow effect for selected */}
-                        {selectedDistrict === d.name && (
-                            <circle
-                                cx={d.x}
-                                cy={d.y}
-                                r={d.r + 2}
-                                fill="#3b82f6"
-                                opacity="0.2"
-                                className="animate-pulse"
-                            />
-                        )}
-
-                        {/* Main circle */}
-                        <circle
-                            cx={d.x}
-                            cy={d.y}
-                            r={d.r}
-                            className={`
-                                transition-all duration-200
-                                ${selectedDistrict === d.name
-                                    ? 'fill-blue-600 stroke-white stroke-[1.5]'
-                                    : 'fill-white stroke-blue-400 stroke-[0.8] hover:fill-blue-100'
-                                }
-                            `}
-                            filter={selectedDistrict === d.name ? 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.5))' : ''}
-                        />
-
-                        {/* District name */}
-                        <text
-                            x={d.x}
-                            y={d.y}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            className={`
-                                text-[2.5px] font-bold select-none pointer-events-none
-                                ${selectedDistrict === d.name ? 'fill-white' : 'fill-gray-700'}
-                            `}
-                        >
-                            {d.name.length > 7 ? d.name.substring(0, 5) + '.' : d.name}
-                        </text>
-                    </g>
-                ))}
-            </svg>
-
-            {/* Selected District Info */}
+            {/* Bottom HUD - Outside map area */}
             {selectedDistrict && selectedDistrict !== 'all' && (
-                <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-gray-100 max-w-xs z-10">
-                    <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                        {selectedDistrict}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                            <span className="text-gray-500 block">ASM Sayısı</span>
-                            <span className="font-bold text-lg text-gray-900">
-                                {districtData.find(x => x.name === selectedDistrict)?.asm || 0}
-                            </span>
+                <div className="p-6 bg-slate-900/95 border-t border-slate-800 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-primary/20 p-4 rounded-2xl">
+                                <Activity className="w-8 h-8 text-primary" />
+                            </div>
+                            <div>
+                                <h4 className="text-2xl font-black text-white tracking-tighter uppercase">{selectedDistrict}</h4>
+                                <p className="text-primary text-[10px] font-black tracking-[0.2em]">BÖLGESEL PERFORMANS ANALİZİ</p>
+                            </div>
                         </div>
-                        <div>
-                            <span className="text-gray-500 block">SHM Sayısı</span>
-                            <span className="font-bold text-lg text-gray-900">
-                                {districtData.find(x => x.name === selectedDistrict)?.shm || 0}
-                            </span>
-                        </div>
-                        <div className="col-span-2 pt-2 border-t">
-                            <span className="text-gray-500 block">Performans Skoru</span>
-                            <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+
+                        <div className="flex gap-8 items-center border-l border-slate-800 pl-8">
+                            <div className="text-center">
+                                <span className="text-slate-500 text-[10px] font-bold block mb-1">ASM</span>
+                                <span className="text-2xl font-black text-white">
+                                    {districtData.find(x => x.name === selectedDistrict)?.asm || 0}
+                                </span>
+                            </div>
+                            <div className="text-center">
+                                <span className="text-slate-500 text-[10px] font-bold block mb-1">SHM</span>
+                                <span className="text-2xl font-black text-white">
+                                    {districtData.find(x => x.name === selectedDistrict)?.shm || 0}
+                                </span>
+                            </div>
+                            <div className="w-32">
+                                <div className="flex justify-between items-end mb-1">
+                                    <span className="text-slate-500 text-[10px] font-bold">VERİMLİLİK</span>
+                                    <span className="text-primary font-black text-sm">
+                                        %{districtData.find(x => x.name === selectedDistrict)?.puan || 0}
+                                    </span>
+                                </div>
+                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden p-0.5">
                                     <div
-                                        className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
+                                        className="h-full bg-gradient-to-r from-primary/50 to-primary rounded-full"
                                         style={{ width: `${districtData.find(x => x.name === selectedDistrict)?.puan || 0}%` }}
                                     />
                                 </div>
-                                <span className="font-bold text-green-600">
-                                    %{districtData.find(x => x.name === selectedDistrict)?.puan || 0}
-                                </span>
                             </div>
                         </div>
+
+                        <button className="bg-white text-slate-900 px-6 py-3 rounded-xl font-black text-xs hover:bg-primary hover:text-white transition-all shadow-xl">
+                            DETAYLI RAPOR
+                        </button>
                     </div>
                 </div>
             )}
@@ -205,129 +207,137 @@ const KocaeliMap = ({ selectedDistrict, onSelect }: { selectedDistrict: string, 
     );
 };
 
-// Live System Status Component - Removed based on user request
-
-
-export default function DashboardOverview() {
+export default function DashboardOverview({ userRole }: { userRole?: { seviye: number } }) {
     const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
+    const canViewDashboard = userRole && userRole.seviye >= 7;
 
     return (
         <div className="space-y-6">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Toplam Personel</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">1,248</div>
-                        <p className="text-xs text-muted-foreground">+2.5% geçen aydan</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Aktif Görevler</CardTitle>
-                        <Activity className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">45</div>
-                        <p className="text-xs text-muted-foreground">12 tamamlanmak üzere</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Bekleyen Onaylar</CardTitle>
-                        <AlertCircle className="h-4 w-4 text-orange-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">7</div>
-                        <p className="text-xs text-muted-foreground">Acil müdahale gerekli</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Genel Performans</CardTitle>
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">%92</div>
-                        <p className="text-xs text-muted-foreground">+4% geçen yıldan</p>
-                    </CardContent>
-                </Card>
-            </div>
-            {/* Map and Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Map - Takes 2 columns */}
-                <div className="lg:col-span-2">
-                    <Card className="h-[500px]">
-                        <CardHeader>
-                            <CardTitle>Coğrafi Dağılım</CardTitle>
+            {/* KPI Cards - Only for role level 7+ */}
+            {canViewDashboard && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Toplam Personel</CardTitle>
+                            <Users className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
-                        <CardContent className="h-[420px]">
+                        <CardContent>
+                            <div className="text-2xl font-bold">1,248</div>
+                            <p className="text-xs text-muted-foreground">+2.5% geçen aydan</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Aktif Görevler</CardTitle>
+                            <Activity className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">45</div>
+                            <p className="text-xs text-muted-foreground">12 tamamlanmak üzere</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Bekleyen Onaylar</CardTitle>
+                            <AlertCircle className="h-4 w-4 text-orange-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">7</div>
+                            <p className="text-xs text-muted-foreground">Acil müdahale gerekli</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Genel Performans</CardTitle>
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">%92</div>
+                            <p className="text-xs text-muted-foreground">+4% geçen yıldan</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Main Map View - Full Width */}
+            {canViewDashboard && (
+                <div className="grid grid-cols-1 gap-6">
+                    <Card className="border-none shadow-2xl bg-slate-950 overflow-hidden rounded-[2.5rem]">
+                        <CardHeader className="bg-slate-900/50 backdrop-blur-md border-b border-slate-800 py-6 px-10">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <CardTitle className="text-2xl font-black text-white tracking-tighter">OPERASYONEL DURUM HARİTASI</CardTitle>
+                                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">İl Geneli Kurumsal Dağılım ve Performans İzleme</p>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
                             <KocaeliMap selectedDistrict={selectedDistrict} onSelect={setSelectedDistrict} />
                         </CardContent>
                     </Card>
                 </div>
+            )}
 
-                {/* Pie Chart - Moved here next to the map */}
-                <div>
-                    <Card className="h-[500px]">
+            {/* Sub Charts Row - Only for role level 7+ */}
+            {canViewDashboard && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Pie Chart */}
+                    <Card className="rounded-[2.5rem] shadow-xl border-none bg-white">
                         <CardHeader>
-                            <CardTitle>Görev Dağılımı</CardTitle>
+                            <CardTitle className="text-lg font-black text-slate-900">Görev Dağılımı</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex flex-col items-center justify-center h-[420px]">
-                            <div className="h-[300px] w-full">
+                        <CardContent className="flex flex-col items-center justify-center pt-0">
+                            <div className="h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
                                             data={performansData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={70}
-                                            outerRadius={100}
-                                            paddingAngle={5}
+                                            innerRadius={60}
+                                            outerRadius={90}
+                                            paddingAngle={8}
                                             dataKey="value"
                                         >
                                             {performansData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                                             ))}
                                         </Pie>
-                                        <Tooltip />
-                                        <Legend verticalAlign="bottom" height={36} />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
                         </CardContent>
                     </Card>
-                </div>
-            </div>
 
-            {/* Expanded Bar Chart Row */}
-            <div className="grid grid-cols-1 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>İlçelere Göre Kurum Dağılımı</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[400px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={districtData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                    <YAxis />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Legend />
-                                    <Bar dataKey="asm" stackId="a" fill="#3b82f6" name="ASM" radius={[0, 0, 0, 0]} />
-                                    <Bar dataKey="shm" stackId="a" fill="#f43f5e" name="SHM" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    {/* Bar Chart - Takes 2 Columns */}
+                    <Card className="lg:col-span-2 rounded-[2.5rem] shadow-xl border-none bg-white">
+                        <CardHeader>
+                            <CardTitle className="text-lg font-black text-slate-900">İlçelere Göre Kurum Dağılımı</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={districtData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                                        <Tooltip
+                                            cursor={{ fill: '#f8fafc' }}
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Bar dataKey="asm" stackId="a" fill="#3b82f6" name="ASM" radius={[0, 0, 0, 0]} barSize={20} />
+                                        <Bar dataKey="shm" stackId="a" fill="#f43f5e" name="SHM" radius={[4, 4, 0, 0]} barSize={20} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

@@ -63,6 +63,13 @@ model Personel {
   created_by_id String?
   updated_by_id String?
 
+  // GÖREV VE TAKVİM İLİŞKİLERİ
+  olusturulan_gorevler  Gorev[]           @relation("OlusturanGorev")
+  sorumlu_gorevler      Gorev[]           @relation("SorumluGorev")
+  gorev_guncellemeleri  GorevGuncelleme[]
+  takvim_etkinlikleri   TakvimEtkinlik[]  @relation("PersonelEtkinlik")
+  olusturulan_etkinlikler TakvimEtkinlik[] @relation("OlusturanEtkinlik")
+
   @@index([email])
   @@index([tc_kimlik_no])
   @@index([rol_id])
@@ -173,6 +180,7 @@ model Birim {
   // İLİŞKİLER
   personeller    Personel[]
   veri_girisleri SHMVeriGiris[] @relation("BirimVeriGiris") // Dış birimlerin verilerini takip eder
+  gorevler       Gorev[]
 
   // ZAMAN DAMGALARI
   created_at DateTime @default(now())
@@ -276,3 +284,91 @@ model PasswordResetToken {
   @@index([personel_id])
   @@map("password_reset_tokens")
 }
+
+// ============================================
+// 9. GÖREVLER TABLOSU
+// ============================================
+model Gorev {
+  id String @id @default(uuid())
+
+  baslik      String
+  aciklama    String?
+  durum       String   @default("BEKLEYEN") // BEKLEYEN, DEVAM_EDEN, TAMAMLANDI, IPTAL
+  oncelik     String   @default("ORTA")     // DUSUK, ORTA, YUKSEK, ACIL
+  kategori    String?  // DENETIM, EGITIM, TOPLANTI, DIGER
+  
+  baslangic_tarihi DateTime?
+  bitis_tarihi     DateTime?
+  tamamlanma_tarihi DateTime?
+
+  // İLİŞKİLER
+  olusturan_id String
+  olusturan    Personel @relation("OlusturanGorev", fields: [olusturan_id], references: [id])
+  
+  sorumlu_id   String
+  sorumlu      Personel @relation("SorumluGorev", fields: [sorumlu_id], references: [id])
+
+  birim_id     String?
+  birim        Birim?   @relation(fields: [birim_id], references: [id])
+
+  // Geri bildirimler ve görseller
+  guncellemeler GorevGuncelleme[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([sorumlu_id])
+  @@index([olusturan_id])
+  @@index([durum])
+  @@map("gorevler")
+}
+
+model GorevGuncelleme {
+  id String @id @default(uuid())
+  
+  gorev_id    String
+  gorev       Gorev    @relation(fields: [gorev_id], references: [id], onDelete: Cascade)
+  
+  personel_id String
+  personel    Personel @relation(fields: [personel_id], references: [id])
+  
+  mesaj       String
+  gorsel_url  String?
+  
+  created_at DateTime @default(now())
+
+  @@index([gorev_id])
+  @@map("gorev_guncellemeleri")
+}
+
+// ============================================
+// 10. TAKVİM ETKİNLİKLERİ
+// ============================================
+model TakvimEtkinlik {
+  id String @id @default(uuid())
+
+  baslik      String
+  aciklama    String?
+  tip         String   // TOPLANTI, EGITIM, IZIN, DENETIM, DIGER
+  renk        String?  // Otomatik renklendirme için
+  
+  baslangic   DateTime
+  bitis       DateTime
+  
+  tum_gun     Boolean @default(false)
+
+  // İLİŞKİLER
+  personel_id String
+  personel    Personel @relation("PersonelEtkinlik", fields: [personel_id], references: [id], onDelete: Cascade)
+  
+  olusturan_id String
+  olusturan    Personel @relation("OlusturanEtkinlik", fields: [olusturan_id], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([personel_id])
+  @@index([baslangic])
+  @@map("takvim_etkinlikleri")
+}
+

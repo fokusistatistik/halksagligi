@@ -54,6 +54,12 @@ export default function SiteHeader() {
                             />
                             <span className="text-gray-300 mx-1 md:mx-2 hidden sm:inline">|</span>
                             <img
+                                src="https://static.fokusistatistik.com/halksagligi/genel/asyalogo2.png"
+                                alt="ASYA"
+                                className="h-8 md:h-10 w-auto"
+                            />
+                            <span className="text-gray-300 mx-1 md:mx-2 hidden sm:inline">|</span>
+                            <img
                                 src="https://static.fokusistatistik.com/resimler/saha.jpg"
                                 alt="SAHA"
                                 className="h-8 md:h-10 w-auto rounded-md"

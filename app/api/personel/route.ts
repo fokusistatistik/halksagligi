@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const birimId = searchParams.get('birim_id')
     const rolId = searchParams.get('rol_id')
+    const yoneticiId = searchParams.get('yonetici_id')
     const aktif = searchParams.get('aktif')
     const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1')
@@ -61,9 +62,14 @@ export async function GET(request: NextRequest) {
     const where: {
       birim_id?: string;
       rol_id?: string;
+      yonetici_id?: string;
       aktif?: boolean;
       OR?: any[];
     } = {}
+
+    if (yoneticiId) {
+      where.yonetici_id = yoneticiId
+    }
 
     // Birim yöneticisi sadece kendi birimini görebilir
     if (user.rol.kod === 'BIRIM_YONETICISI') {

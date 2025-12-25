@@ -100,7 +100,7 @@ export default function HomePage() {
           <h2 className="text-lg font-semibold text-gray-900">Genel Bakış ve İstatistikler</h2>
           <span className="text-xs text-gray-500">Son güncelleme: 14:05</span>
         </div>
-        <DashboardOverview />
+        <DashboardOverview userRole={session?.user?.rol as any} />
       </section>
 
       {/* Quick Access Modules */}

@@ -43,9 +43,9 @@ export default function OnaylarPage() {
       if (data.success) {
         setKayitlar(data.data);
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error('Veriler yüklenemedi');
-      console.error(err);
+      console.error(_err);
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export default function OnaylarPage() {
       } else {
         toast.error('Onaylama başarısız');
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error('Bir hata oluştu');
     }
   };
@@ -96,7 +96,7 @@ export default function OnaylarPage() {
       } else {
         toast.error('Reddetme başarısız');
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error('Bir hata oluştu');
     }
   };
@@ -128,7 +128,7 @@ export default function OnaylarPage() {
 
       setSelectedIds([]);
       loadBekleyenKayitlar();
-    } catch (err) {
+    } catch (_err) {
       toast.error('Toplu onaylama başarısız');
     }
   };

@@ -28,7 +28,7 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: birim })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
@@ -50,7 +50,7 @@ export async function PUT(
     })
 
     return NextResponse.json({ success: true, data: birim })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
@@ -82,7 +82,7 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true, message: 'Birim silindi' })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

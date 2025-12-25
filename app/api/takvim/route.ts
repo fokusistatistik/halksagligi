@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
         const isManagement = user.rol?.seviye >= 9;
 
-        let where: any = {};
+        const where: any = {};
 
         if (targetUserId && isManagement) {
             where.personel_id = targetUserId;

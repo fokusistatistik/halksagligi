@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json()
     return NextResponse.json({ success: true, data: result })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Webhook error' }, { status: 500 })
   }
 }
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     const result = await response.json()
     return NextResponse.json(result)
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Webhook error' }, { status: 500 })
   }
 }

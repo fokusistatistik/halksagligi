@@ -69,7 +69,7 @@ export default function Chatbot() {
       } else {
         setMessages(prev => [...prev, { text: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.', sender: 'bot' }]);
       }
-    } catch (error) {
+    } catch (_error) {
       setIsTyping(false);
       setMessages(prev => [...prev, { text: 'Bağlantı hatası. Lütfen tekrar deneyin.', sender: 'bot' }]);
     }

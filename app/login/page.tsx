@@ -42,7 +42,7 @@ export default function LoginPage() {
         setError(result?.error || 'Giriş başarısız. Lütfen tekrar deneyin.');
         setLoading(false);
       }
-    } catch (err: any) {
+    } catch (_err: any) {
       setError('Bir hata oluştu. Lütfen tekrar deneyin.');
       setLoading(false);
     }

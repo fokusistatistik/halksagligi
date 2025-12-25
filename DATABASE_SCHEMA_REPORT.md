@@ -1,8 +1,8 @@
 # Database Schema Raporu - Halk Sağlığı Yönetim Sistemi
 
-**Versiyon:** 2.0 (SQLite)
-**Tarih:** 2025-12-24
-**Sistem:** Kocaeli İSM Halk Sağlığı Yönetim Platformu
+**Versiyon:** 2.1 (SQLite + Görev/Takvim Modülleri)
+**Tarih:** 2025-12-26
+**Sistem:** Kocaeli İSM Halk Sağlığı Yönetim Platformu (SAHA)
 
 ---
 
@@ -807,6 +807,8 @@ fuser -k prisma/dev.db
 
 **Rapor Sonu**
 
-**Versiyon:** 2.0 (SQLite)
-**Son Güncelleme:** 2025-12-24
+**Versiyon:** 2.1 (SQLite + Görev/Takvim)
+**Son Güncelleme:** 2025-12-26
 **Geliştirici:** FOKUS İstatistik
+
+**Not:** Bu rapor Gorev, GorevGuncelleme ve TakvimEtkinlik modellerini içermektedir.

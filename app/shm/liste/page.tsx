@@ -47,8 +47,8 @@ export default function SHMListePage() {
       if (data.success) {
         setVeriGirisleri(data.data);
       }
-    } catch (err) {
-      console.error('Veriler yüklenemedi:', err);
+    } catch (_err) {
+      console.error('Veriler yüklenemedi:', _err);
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export default function SHMListePage() {
       } else {
         alert('Kayıt silinemedi');
       }
-    } catch (err) {
+    } catch (_err) {
       alert('Bir hata oluştu');
     }
   };

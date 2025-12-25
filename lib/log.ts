@@ -24,7 +24,7 @@ export async function logAktivite(params: LogActivityParams) {
         aciklama: params.aciklama
       }
     })
-  } catch (error) {
+  } catch (_error) {
     // Silently fail - aktivite log should not break the main operation
   }
 }

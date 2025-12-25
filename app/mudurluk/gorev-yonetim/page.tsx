@@ -75,7 +75,7 @@ export default function GorevYonetimPage() {
     const user = session?.user as any;
     const isManagement = user?.rol?.seviye >= 9;
 
-    const [activeTab, setActiveTab] = useState('gorevler');
+    const [_activeTab, setActiveTab] = useState('gorevler');
     const [loading, setLoading] = useState(true);
     const [gorevler, setGorevler] = useState<Gorev[]>([]);
     const [etkinlikler, setEtkinlikler] = useState<Etkinlik[]>([]);
@@ -185,7 +185,7 @@ export default function GorevYonetimPage() {
             } else {
                 toast.error(data.error || 'Hata oluştu');
             }
-        } catch (error) {
+        } catch (_error) {
             toast.error('Bağlantı hatası');
         }
     };
@@ -207,7 +207,7 @@ export default function GorevYonetimPage() {
             } else {
                 toast.error(data.error || 'Hata oluştu');
             }
-        } catch (error) {
+        } catch (_error) {
             toast.error('Bağlantı hatası');
         }
     };
@@ -229,7 +229,7 @@ export default function GorevYonetimPage() {
             } else {
                 toast.error(data.error || 'Hata oluştu');
             }
-        } catch (error) {
+        } catch (_error) {
             toast.error('Bağlantı hatası');
         }
     };

@@ -122,8 +122,8 @@ export default function YetkilerPage() {
       setShowModal(false);
       resetForm();
       loadData();
-    } catch (err) {
-      const error = err as Error;
+    } catch (_err) {
+      const error = _err as Error;
       toast.error(error.message);
     }
   };
@@ -241,9 +241,8 @@ export default function YetkilerPage() {
           {roller.map((rol) => (
             <div
               key={rol.id}
-              className={`rounded-lg shadow-sm border transition-all ${
-                !rol.aktif ? 'bg-gray-100 border-red-200 opacity-70' : 'bg-white border-gray-200'
-              }`}
+              className={`rounded-lg shadow-sm border transition-all ${!rol.aktif ? 'bg-gray-100 border-red-200 opacity-70' : 'bg-white border-gray-200'
+                }`}
             >
               <div className="p-6">
                 <div className="flex items-start justify-between">

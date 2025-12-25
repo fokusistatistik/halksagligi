@@ -24,7 +24,7 @@ export async function GET(_request: NextRequest) {
     })
 
     return NextResponse.json({ success: true, data: roller })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const rol = await prisma.rol.create({ data: body })
 
     return NextResponse.json({ success: true, data: rol }, { status: 201 })
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { LogOut, Bell, Menu, ChevronDown, FileText, BarChart3, Building2, Users, HeartPulse, MapPin } from 'lucide-react';
+import { LogOut, Bell, ChevronDown, BarChart3, Building2, HeartPulse, MapPin, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Modül menüsü
@@ -20,6 +20,7 @@ export default function SiteHeader() {
     const { data: session } = useSession();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showModulesMenu, setShowModulesMenu] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
 
     // Don't show on public/auth pages
     if (
@@ -134,34 +135,55 @@ export default function SiteHeader() {
                             <span className="sr-only">Bildirimler</span>
                         </Button>
 
-                        <div className="hidden md:flex items-center gap-3 border-l pl-4">
-                            {/* User Photo */}
-                            <img
-                                src={userPhotoUrl}
-                                alt={user?.name || 'Kullanıcı'}
-                                className="h-10 w-10 rounded-full border-2 border-gray-200 object-cover"
-                            />
-
-                            {/* User Info */}
-                            <div className="flex flex-col items-start">
-                                <span className="text-sm font-semibold text-gray-900">
-                                    {user?.name}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                    {user?.rol?.ad}
-                                </span>
-                            </div>
-
-                            {/* Logout Button */}
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleLogout}
-                                className="text-gray-500 hover:text-red-600 hover:bg-red-50"
-                                title="Çıkış Yap"
+                        <div className="hidden md:flex items-center gap-3 border-l pl-4 relative">
+                            {/* User Menu Trigger */}
+                            <button
+                                onClick={() => setShowUserMenu(!showUserMenu)}
+                                className="flex items-center gap-3 group"
                             >
-                                <LogOut className="h-5 w-5" />
-                            </Button>
+                                <img
+                                    src={userPhotoUrl}
+                                    alt={user?.name || 'Kullanıcı'}
+                                    className="h-10 w-10 rounded-full border-2 border-gray-200 object-cover group-hover:border-primary transition-colors"
+                                />
+                                <div className="flex flex-col items-start">
+                                    <span className="text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">
+                                        {user?.name}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        {user?.rol?.ad}
+                                    </span>
+                                </div>
+                                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* User Dropdown Menu */}
+                            {showUserMenu && (
+                                <div
+                                    className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
+                                    onMouseLeave={() => setShowUserMenu(false)}
+                                >
+                                    <Link
+                                        href="/settings"
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                        onClick={() => setShowUserMenu(false)}
+                                    >
+                                        <SettingsIcon className="h-4 w-4" />
+                                        Ayarlar
+                                    </Link>
+                                    <hr className="my-1 border-gray-100" />
+                                    <button
+                                        onClick={() => {
+                                            setShowUserMenu(false);
+                                            handleLogout();
+                                        }}
+                                        className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                    >
+                                        <LogOut className="h-4 w-4" />
+                                        Çıkış Yap
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

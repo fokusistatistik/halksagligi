@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     BarChart,
@@ -13,11 +13,9 @@ import {
     ResponsiveContainer,
     PieChart,
     Pie,
-    Cell,
-    LineChart,
-    Line
+    Cell
 } from 'recharts';
-import { AlertCircle, CheckCircle2, Activity, Users, Server, Database, Wifi, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Activity, Users } from 'lucide-react';
 
 // Mock Data
 const districtData = [
@@ -42,13 +40,8 @@ const performansData = [
 ];
 
 // Real-time system data
-const systemHealthData = [
-    { time: '10:00', cpu: 45, memory: 62, requests: 120 },
-    { time: '11:00', cpu: 52, memory: 65, requests: 145 },
-    { time: '12:00', cpu: 48, memory: 68, requests: 180 },
-    { time: '13:00', cpu: 55, memory: 70, requests: 165 },
-    { time: '14:00', cpu: 50, memory: 67, requests: 155 },
-];
+// Redundant system health data removed
+
 
 // Kocaeli Map Component with proper rendering
 const KocaeliMap = ({ selectedDistrict, onSelect }: { selectedDistrict: string, onSelect: (d: string) => void }) => {
@@ -201,126 +194,8 @@ const KocaeliMap = ({ selectedDistrict, onSelect }: { selectedDistrict: string, 
     );
 };
 
-// Live System Status Component
-const LiveSystemStatus = () => {
-    const [currentTime, setCurrentTime] = useState(new Date());
-    const [systemMetrics, setSystemMetrics] = useState({
-        cpu: 48,
-        memory: 65,
-        activeUsers: 24,
-        requestsPerMin: 152
-    });
+// Live System Status Component - Removed based on user request
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-            // Simulate real-time data updates
-            setSystemMetrics({
-                cpu: 40 + Math.floor(Math.random() * 20),
-                memory: 60 + Math.floor(Math.random() * 15),
-                activeUsers: 20 + Math.floor(Math.random() * 15),
-                requestsPerMin: 140 + Math.floor(Math.random() * 40)
-            });
-        }, 3000);
-
-        return () => clearInterval(timer);
-    }, []);
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        Canlı Sistem Durumu
-                    </div>
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {/* System Time */}
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm text-gray-600">Sistem Saati</span>
-                        </div>
-                        <span className="font-mono font-semibold text-gray-900">
-                            {currentTime.toLocaleTimeString('tr-TR')}
-                        </span>
-                    </div>
-
-                    {/* Metrics */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Server className="h-4 w-4 text-blue-600" />
-                                <span className="text-xs text-gray-600">CPU</span>
-                            </div>
-                            <div className="font-bold text-lg text-gray-900">%{systemMetrics.cpu}</div>
-                            <div className="mt-1 h-1.5 bg-blue-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-blue-600 transition-all duration-500"
-                                    style={{ width: `${systemMetrics.cpu}%` }}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="p-3 bg-purple-50 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Database className="h-4 w-4 text-purple-600" />
-                                <span className="text-xs text-gray-600">Bellek</span>
-                            </div>
-                            <div className="font-bold text-lg text-gray-900">%{systemMetrics.memory}</div>
-                            <div className="mt-1 h-1.5 bg-purple-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-purple-600 transition-all duration-500"
-                                    style={{ width: `${systemMetrics.memory}%` }}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="p-3 bg-green-50 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Users className="h-4 w-4 text-green-600" />
-                                <span className="text-xs text-gray-600">Aktif Kullanıcı</span>
-                            </div>
-                            <div className="font-bold text-lg text-gray-900">{systemMetrics.activeUsers}</div>
-                        </div>
-
-                        <div className="p-3 bg-orange-50 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Activity className="h-4 w-4 text-orange-600" />
-                                <span className="text-xs text-gray-600">İstek/dk</span>
-                            </div>
-                            <div className="font-bold text-lg text-gray-900">{systemMetrics.requestsPerMin}</div>
-                        </div>
-                    </div>
-
-                    {/* Connection Status */}
-                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-100">
-                        <div className="flex items-center gap-2">
-                            <Wifi className="h-4 w-4 text-green-600" />
-                            <span className="text-sm text-gray-600">Bağlantı</span>
-                        </div>
-                        <span className="text-sm font-semibold text-green-600">Stabil</span>
-                    </div>
-
-                    {/* Mini Performance Chart */}
-                    <div className="h-24">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={systemHealthData}>
-                                <XAxis dataKey="time" tick={{ fontSize: 10 }} />
-                                <YAxis tick={{ fontSize: 10 }} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="requests" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
-};
 
 export default function DashboardOverview() {
     const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
@@ -370,8 +245,7 @@ export default function DashboardOverview() {
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Map, Charts, and Live System */}
+            {/* Map and Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Map - Takes 2 columns */}
                 <div className="lg:col-span-2">
@@ -385,58 +259,58 @@ export default function DashboardOverview() {
                     </Card>
                 </div>
 
-                {/* Live System Status */}
-                <div className="space-y-6">
-                    <LiveSystemStatus />
+                {/* Pie Chart - Moved here next to the map */}
+                <div>
+                    <Card className="h-[500px]">
+                        <CardHeader>
+                            <CardTitle>Görev Dağılımı</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex flex-col items-center justify-center h-[420px]">
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={performansData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={70}
+                                            outerRadius={100}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {performansData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Görev Durumu</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={performansData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={90}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {performansData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend verticalAlign="bottom" height={36} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-
+            {/* Expanded Bar Chart Row */}
+            <div className="grid grid-cols-1 gap-6">
                 <Card>
                     <CardHeader>
                         <CardTitle>İlçelere Göre Kurum Dağılımı</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[300px]">
+                        <div className="h-[400px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={districtData.slice(0, 6)}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                                <BarChart data={districtData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                                     <YAxis />
-                                    <Tooltip />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                    />
                                     <Legend />
-                                    <Bar dataKey="asm" stackId="a" fill="#3b82f6" name="ASM" />
-                                    <Bar dataKey="shm" stackId="a" fill="#e11d48" name="SHM" />
+                                    <Bar dataKey="asm" stackId="a" fill="#3b82f6" name="ASM" radius={[0, 0, 0, 0]} />
+                                    <Bar dataKey="shm" stackId="a" fill="#f43f5e" name="SHM" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>

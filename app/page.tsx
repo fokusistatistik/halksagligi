@@ -88,14 +88,10 @@ export default function HomePage() {
             Hoş geldiniz, {session?.user?.name}
           </h1>
           <p className="text-gray-600 mt-1">
-            Halk Sağlığı Yönetim Sistemi (v2.0)
+            Halk Sağlığı Yönetim Sistemi (V1 Beta)
           </p>
         </div>
-        <div className="text-right hidden md:block">
-          <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-            Canlı Sistem
-          </span>
-        </div>
+
       </div>
 
       {/* Main Dashboard */}

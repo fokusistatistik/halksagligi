@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { MessageCircle, X, Send } from 'lucide-react';
+import { X, Send } from 'lucide-react';
 
 export default function Chatbot() {
   const { data: session } = useSession();
@@ -103,10 +103,15 @@ export default function Chatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 animate-pulse hover:animate-none"
+          className="fixed bottom-6 right-6 z-40 w-16 h-16 bg-white rounded-full shadow-2xl transition-all duration-300 hover:scale-110 border-2 border-primary/20 p-0 overflow-hidden group"
           aria-label="Chatbot'u aç"
         >
-          <MessageCircle className="w-7 h-7" />
+          <img
+            src="https://static.fokusistatistik.com/halksagligi/genel/asyagorsel.png"
+            alt="Asistan"
+            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
       )}
 
@@ -115,9 +120,9 @@ export default function Chatbot() {
         <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-48px)] h-[600px] max-h-[calc(100vh-48px)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary to-primary/80 p-5 flex items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center overflow-hidden">
+            <div className="w-14 h-14 rounded-full bg-white border-2 border-white/50 flex items-center justify-center overflow-hidden">
               <img
-                src="https://static.fokusistatistik.com/resimler/fokus216k.png"
+                src="https://static.fokusistatistik.com/halksagligi/genel/asyagorsel.png"
                 alt="SAHA Asistan"
                 className="w-full h-full object-cover"
               />
@@ -143,11 +148,10 @@ export default function Chatbot() {
                 className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                    msg.sender === 'user'
-                      ? 'bg-gradient-to-br from-primary to-primary/80 text-white rounded-br-sm'
-                      : 'bg-white text-gray-800 rounded-bl-sm shadow-sm border border-gray-100'
-                  }`}
+                  className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.sender === 'user'
+                    ? 'bg-gradient-to-br from-primary to-primary/80 text-white rounded-br-sm'
+                    : 'bg-white text-gray-800 rounded-bl-sm shadow-sm border border-gray-100'
+                    }`}
                   dangerouslySetInnerHTML={{
                     __html: msg.text
                       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')

@@ -51,7 +51,7 @@ export async function PUT(
     const { yetkiIds, ...rolData } = body;
 
     // Rol bilgilerini güncelle
-    const rol = await prisma.rol.update({
+    await prisma.rol.update({
       where: { id: params.id },
       data: rolData,
       include: {

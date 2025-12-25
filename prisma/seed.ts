@@ -394,7 +394,9 @@ async function main() {
 
   await prisma.personel.upsert({
     where: { email: 'admin@saglik.gov.tr' },
-    update: {},
+    update: {
+      profil_foto_url: 'https://static.fokusistatistik.com/CRM/yonetim_250001_emre_bostanoglu.jpeg',
+    },
     create: {
       tc_kimlik_no: '12345678901',
       ad: 'Admin',
@@ -405,6 +407,7 @@ async function main() {
       rol_id: adminRol!.id,
       birim_id: halkSagligiBirim.id,
       unvan: 'Sistem Yöneticisi',
+      profil_foto_url: 'https://static.fokusistatistik.com/CRM/yonetim_250001_emre_bostanoglu.jpeg',
       aktif: true
     }
   })

@@ -20,7 +20,6 @@ type ConfirmListener = (dialog: ConfirmDialog | null) => void;
 
 class ConfirmManager {
   private listeners: ConfirmListener[] = [];
-  private currentDialog: ConfirmDialog | null = null;
 
   subscribe(listener: ConfirmListener) {
     this.listeners.push(listener);
@@ -43,13 +42,11 @@ class ConfirmManager {
         cancelText: options.cancelText || 'İptal',
         type: options.type || 'danger',
         resolve: (value: boolean) => {
-          this.currentDialog = null;
           this.notify(null);
           resolve(value);
         }
       };
 
-      this.currentDialog = dialog;
       this.notify(dialog);
     });
   }

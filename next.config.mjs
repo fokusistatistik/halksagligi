@@ -128,6 +128,11 @@ const nextConfig = {
     // your project has ESLint errors. (Not recommended for production)
     ignoreDuringBuilds: true,
   },
+
+  // Add generateBuildId for cache busting
+  generateBuildId: async () => {
+    return Date.now().toString()
+  },
 };
 
 // PWA Configuration

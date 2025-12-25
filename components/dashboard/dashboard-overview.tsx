@@ -77,8 +77,19 @@ const KocaeliMap = ({ selectedDistrict, onSelect }: { selectedDistrict: string, 
                     </linearGradient>
                 </defs>
 
-                {/* Sea area (Marmara) */}
-                <rect x="0" y="0" width="100" height="100" fill="url(#seaGradient)" />
+                {/* Kocaeli Map Background Image */}
+                <image
+                    href="https://static.fokusistatistik.com/resimler/kocaeli-il-haritasi.png?v=3"
+                    x="0"
+                    y="0"
+                    width="100"
+                    height="100"
+                    preserveAspectRatio="xMidYMid meet"
+                    className="opacity-70"
+                />
+
+                {/* Sea area (Marmara) - Keep it subtle behind the map if needed, or remove for clarity */}
+                {/* <rect x="0" y="0" width="100" height="100" fill="url(#seaGradient)" opacity="0.2" /> */}
 
                 {/* Connection lines */}
                 {districts.map((d, i) => {

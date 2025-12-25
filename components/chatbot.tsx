@@ -107,7 +107,7 @@ export default function Chatbot() {
           aria-label="Chatbot'u aç"
         >
           <img
-            src="https://static.fokusistatistik.com/halksagligi/genel/asyagorsel.png"
+            src="https://static.fokusistatistik.com/halksagligi/genel/asyagorsel.png?v=3"
             alt="Asistan"
             className="w-full h-full object-cover transition-transform group-hover:scale-110"
           />
@@ -122,7 +122,7 @@ export default function Chatbot() {
           <div className="bg-gradient-to-r from-primary to-primary/80 p-5 flex items-center gap-3">
             <div className="w-14 h-14 rounded-full bg-white border-2 border-white/50 flex items-center justify-center overflow-hidden">
               <img
-                src="https://static.fokusistatistik.com/halksagligi/genel/asyagorsel.png"
+                src="https://static.fokusistatistik.com/halksagligi/genel/asyagorsel.png?v=3"
                 alt="SAHA Asistan"
                 className="w-full h-full object-cover"
               />

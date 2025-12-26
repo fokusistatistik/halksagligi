@@ -49,6 +49,20 @@ export interface Gorev {
   birim?: Birim;
   baslangic_tarihi: Date;
   bitis_tarihi: Date;
+  tamamlanma_tarihi?: Date;
+
+  tamamlayan_id?: string;
+  tamamlanma_notu?: string;
+
+  destek_verenler?: User[];
+
+  gorsel_1?: string;
+  gorsel_1_not?: string;
+  gorsel_2?: string;
+  gorsel_2_not?: string;
+  gorsel_3?: string;
+  gorsel_3_not?: string;
+
   tamamlanma_yuzdesi: number;
   ust_gorev_id?: string;
   dosyalar?: string[];

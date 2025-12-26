@@ -54,6 +54,9 @@ export async function GET(request: Request) {
                 olusturan: {
                     select: { id: true, ad: true, soyad: true }
                 },
+                destek_verenler: {
+                    select: { id: true, ad: true, soyad: true, profil_foto_url: true }
+                },
                 guncellemeler: {
                     orderBy: { created_at: 'desc' },
                     include: {
@@ -84,7 +87,7 @@ export async function POST(request: Request) {
         const user = session.user as any;
         const body = await request.json();
 
-        // Yetki kontrolü: Sadece belli seviye üstü görev atayabilir (örn: seviye >= 7)
+        // Yetki kontrolü: Sadece belli seviye üstü görev atayabilir (örn: seviye >= 7 - Birim Yöneticisi ve üstü)
         if (user.rol?.seviye < 7) {
             return NextResponse.json({ error: 'Görev atama yetkiniz yok' }, { status: 403 });
         }
@@ -95,12 +98,27 @@ export async function POST(request: Request) {
                 aciklama: body.aciklama,
                 oncelik: body.oncelik || 'ORTA',
                 kategori: body.kategori || 'DIGER',
-                durum: 'BEKLEYEN',
+                durum: 'DEVAM_EDEN',
+                is_suresiz: body.is_suresiz || false,
                 baslangic_tarihi: body.baslangic_tarihi ? new Date(body.baslangic_tarihi) : null,
                 bitis_tarihi: body.bitis_tarihi ? new Date(body.bitis_tarihi) : null,
                 sorumlu_id: body.sorumlu_id,
                 olusturan_id: user.id,
-                birim_id: body.birim_id || user.birim_id
+                birim_id: body.birim_id || user.birim_id,
+                gorsel_1: body.gorsel_1,
+                gorsel_1_not: body.gorsel_1_not,
+                gorsel_2: body.gorsel_2,
+                gorsel_2_not: body.gorsel_2_not,
+                gorsel_3: body.gorsel_3,
+                gorsel_3_not: body.gorsel_3_not,
+                destek_verenler: {
+                    connect: body.destek_verenler?.map((id: string) => ({ id })) || []
+                }
+            },
+            include: {
+                destek_verenler: {
+                    select: { id: true, ad: true, soyad: true, profil_foto_url: true }
+                }
             }
         });
 
@@ -113,6 +131,15 @@ export async function POST(request: Request) {
                 tablo: 'gorevler',
                 kayit_id: gorev.id,
                 aciklama: `${gorev.baslik} başlıklı görev oluşturuldu.`
+            }
+        });
+
+        // İlk log güncellemesi (Başlangıç notu)
+        await prisma.gorevGuncelleme.create({
+            data: {
+                gorev_id: gorev.id,
+                personel_id: user.id,
+                mesaj: `Görev oluşturuldu. ${body.notlar ? `Not: ${body.notlar}` : ''}`,
             }
         });
 

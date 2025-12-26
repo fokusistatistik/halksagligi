@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { X, Send } from 'lucide-react';
 
 export default function Chatbot() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Array<{ text: string; sender: 'user' | 'bot' }>>([]);
   const [inputValue, setInputValue] = useState('');
@@ -96,6 +96,8 @@ export default function Chatbot() {
       }
     }
   };
+
+  if (status !== 'authenticated') return null;
 
   return (
     <>

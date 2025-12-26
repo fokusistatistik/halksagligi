@@ -66,6 +66,8 @@ model Personel {
   // GÖREV VE TAKVİM İLİŞKİLERİ
   olusturulan_gorevler  Gorev[]           @relation("OlusturanGorev")
   sorumlu_gorevler      Gorev[]           @relation("SorumluGorev")
+  desteklenen_gorevler  Gorev[]           @relation("DestekVerenGorev")
+  tamamlanan_gorevler   Gorev[]           @relation("TamamlayanPersonel")
   gorev_guncellemeleri  GorevGuncelleme[]
   takvim_etkinlikleri   TakvimEtkinlik[]  @relation("PersonelEtkinlik")
   olusturulan_etkinlikler TakvimEtkinlik[] @relation("OlusturanEtkinlik")
@@ -156,7 +158,7 @@ model Birim {
   ad            String
   kod           String       @unique // Örn: KORFEZ-ASM
   tip           String       // Enum: BirimTip
-  dis_birim_tip String?      // Enum: DisBirimTip
+  dis_birim_tip String?      // Enum: DisBirimTip (ASM, TSM, ADSM, ILCE_SAGLIK, DIGER)
 
   // HİYERARŞİ
   // Dış birimler için zorunlu - Müdürlük birimlerine bağlı olmalı
@@ -295,11 +297,22 @@ model Gorev {
   aciklama    String?
   durum       String   @default("BEKLEYEN") // BEKLEYEN, DEVAM_EDEN, TAMAMLANDI, IPTAL
   oncelik     String   @default("ORTA")     // DUSUK, ORTA, YUKSEK, ACIL
-  kategori    String?  // DENETIM, EGITIM, TOPLANTI, DIGER
+  kategori    String?  // DENETIM, EGITIM, TOPLANTI, PROJE, KONTROL, DIGER
   
   baslangic_tarihi DateTime?
   bitis_tarihi     DateTime?
-  tamamlanma_tarihi DateTime?
+  // TAMAMLANMA BİLGİLERİ
+  tamamlayan_id     String?
+  tamamlayan        Personel? @relation("TamamlayanPersonel", fields: [tamamlayan_id], references: [id])
+  tamamlanma_notu   String?
+
+  // GÖRSELLER VE NOTLARI
+  gorsel_1          String?
+  gorsel_1_not      String?
+  gorsel_2          String?
+  gorsel_2_not      String?
+  gorsel_3          String?
+  gorsel_3_not      String?
 
   // İLİŞKİLER
   olusturan_id String
@@ -307,6 +320,8 @@ model Gorev {
   
   sorumlu_id   String
   sorumlu      Personel @relation("SorumluGorev", fields: [sorumlu_id], references: [id])
+
+  destek_verenler Personel[] @relation("DestekVerenGorev")
 
   birim_id     String?
   birim        Birim?   @relation(fields: [birim_id], references: [id])

@@ -2,9 +2,13 @@
 
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 export default function SiteFooter() {
+    const { status } = useSession();
     const currentYear = 2025;
+
+    if (status !== 'authenticated') return null;
 
     return (
         <footer className="w-full border-t bg-gradient-to-r from-gray-50 to-white py-4 md:py-8 mt-auto">

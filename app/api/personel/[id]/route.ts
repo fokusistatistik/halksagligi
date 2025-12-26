@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { logAktivite } from '@/lib/log'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { cleanPhoneNumber } from '@/lib/format-phone'
 
 export async function GET(
   _request: NextRequest,
@@ -47,12 +48,19 @@ export async function PUT(
     const { password, ...updateData } = body
 
     // Temizleme: Boş string olan (ama zorunlu olmayan) alanları null yap
-    // Veya rol_id, birim_id gibi alanlar boş gelirse hata vermesini önlemek için sil
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === '') {
         delete updateData[key];
       }
     });
+
+    // Telefon temizleme
+    if (updateData.telefon) {
+      updateData.telefon = cleanPhoneNumber(updateData.telefon);
+    }
+    if (updateData.acil_durum_telefon) {
+      updateData.acil_durum_telefon = cleanPhoneNumber(updateData.acil_durum_telefon);
+    }
 
     if (password && password.trim() !== '') {
       updateData.password = await bcrypt.hash(password, 10)

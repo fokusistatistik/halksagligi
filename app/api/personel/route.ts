@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { logAktivite } from '@/lib/log'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { cleanPhoneNumber } from '@/lib/format-phone'
 
 // Validation schema
 const personelSchema = z.object({
@@ -164,6 +165,14 @@ export async function POST(request: NextRequest) {
         delete cleanedBody[key];
       }
     });
+
+    // Telefon temizleme
+    if (cleanedBody.telefon) {
+      cleanedBody.telefon = cleanPhoneNumber(cleanedBody.telefon);
+    }
+    if (cleanedBody.acil_durum_telefon) {
+      cleanedBody.acil_durum_telefon = cleanPhoneNumber(cleanedBody.acil_durum_telefon);
+    }
 
     // Eğer şifre boşsa tamamen sil (Zod optional olduğu için sorun çıkarmaz)
     if (cleanedBody.password === '') {

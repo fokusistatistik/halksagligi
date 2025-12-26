@@ -490,6 +490,118 @@ model SHMVeriGiris {
 
 ---
 
+### 9. gorevler
+
+Görev takip ve yönetim sistemi.
+
+```prisma
+model Gorev {
+  id String @id @default(uuid())
+
+  baslik      String
+  aciklama    String?
+  durum       String   @default("BEKLEYEN") // Enum: GorevDurum
+  oncelik     String   @default("ORTA")     // Enum: GorevOncelik
+  kategori    String?  // Enum: GorevKategori
+  
+  baslangic_tarihi DateTime?
+  bitis_tarihi     DateTime?
+  tamamlanma_tarihi DateTime?
+
+  // İLİŞKİLER
+  olusturan_id String
+  olusturan    Personel @relation("OlusturanGorev", fields: [olusturan_id], references: [id])
+  
+  sorumlu_id   String
+  sorumlu      Personel @relation("SorumluGorev", fields: [sorumlu_id], references: [id])
+
+  birim_id     String?
+  birim        Birim?   @relation(fields: [birim_id], references: [id])
+
+  // Geri bildirimler ve görseller
+  guncellemeler GorevGuncelleme[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([sorumlu_id])
+  @@index([olusturan_id])
+  @@index([durum])
+  @@map("gorevler")
+}
+```
+
+**Önemli Alanlar:**
+- `durum`: Görevin anlık durumu
+- `oncelik`: Görev aciliyet seviyesi
+- `sorumlu_id`: Görevi yapacak personel
+- `olusturan_id`: Görevi veren yönetici/personel
+
+---
+
+### 10. gorev_guncellemeleri
+
+Görevler üzerindeki ilerleme notları ve dosya ekleri.
+
+```prisma
+model GorevGuncelleme {
+  id String @id @default(uuid())
+  
+  gorev_id    String
+  gorev       Gorev    @relation(fields: [gorev_id], references: [id], onDelete: Cascade)
+  
+  personel_id String
+  personel    Personel @relation(fields: [personel_id], references: [id])
+  
+  mesaj       String
+  gorsel_url  String?
+  
+  created_at DateTime @default(now())
+
+  @@index([gorev_id])
+  @@map("gorev_guncellemeleri")
+}
+```
+
+---
+
+### 11. takvim_etkinlikleri
+
+Kişisel ve birim bazlı takvim etkinlikleri.
+
+```prisma
+model TakvimEtkinlik {
+  id String @id @default(uuid())
+
+  baslik      String
+  aciklama    String?
+  tip         String   // Enum: EtkinlikTip
+  renk        String?  // Frontend için hex renk
+  
+  baslangic   DateTime
+  bitis       DateTime
+  
+  tum_gun     Boolean @default(false)
+
+  // İLİŞKİLER
+  personel_id String
+  personel    Personel @relation("PersonelEtkinlik", fields: [personel_id], references: [id], onDelete: Cascade)
+  
+  olusturan_id String
+  olusturan    Personel @relation("OlusturanEtkinlik", fields: [olusturan_id], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([personel_id])
+  @@index([baslangic])
+  @@map("takvim_etkinlikleri")
+}
+```
+
+---
+
+
 ## Enum Tipleri
 
 SQLite native enum desteklemez, string olarak saklanır.
@@ -520,6 +632,29 @@ type OnayDurumu = 'BEKLEMEDE' | 'ONAYLANDI' | 'REDDEDILDI';
 ```
 
 ---
+
+### Görev Durumları
+```typescript
+type GorevDurum = 'BEKLEYEN' | 'DEVAM_EDEN' | 'TAMAMLANDI' | 'IPTAL';
+```
+
+### Görev Öncelikleri
+```typescript
+type GorevOncelik = 'DUSUK' | 'ORTA' | 'YUKSEK' | 'ACIL';
+```
+
+### Görev Kategorileri
+```typescript
+type GorevKategori = 'DENETIM' | 'EGITIM' | 'TOPLANTI' | 'DIGER';
+```
+
+### Etkinlik Tipleri
+```typescript
+type EtkinlikTip = 'TOPLANTI' | 'EGITIM' | 'IZIN' | 'DENETIM' | 'DIGER';
+```
+
+---
+
 
 ## İndeksler ve Performans
 

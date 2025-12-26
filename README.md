@@ -134,7 +134,7 @@ npm install
 2. **Environment variables ayarlayın (`.env`):**
 ```env
 # Database (SQLite)
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="file:./dev.db"
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"

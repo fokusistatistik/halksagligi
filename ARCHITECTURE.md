@@ -203,7 +203,7 @@ interface Gorev {
   birim_id: string;
   baslangic_tarihi: Date;
   bitis_tarihi: Date;
-  tamamlanma_yuzdesi: number;
+
 }
 ```
 

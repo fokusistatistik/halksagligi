@@ -6,6 +6,7 @@ import { TableSkeleton } from '@/components/loading-skeleton';
 import { NoDataFound } from '@/components/empty-state';
 import { toast } from '@/lib/toast';
 import { confirmDialog } from '@/lib/confirm-dialog';
+import { formatPhoneNumber } from '@/lib/format-phone';
 
 interface Kullanici {
   id: string;
@@ -202,7 +203,7 @@ export default function KullanicilarPage() {
       ad: kullanici.ad,
       soyad: kullanici.soyad,
       email: kullanici.email,
-      telefon: kullanici.telefon || '',
+      telefon: kullanici.telefon ? formatPhoneNumber(kullanici.telefon) : '',
       rol_id: kullanici.rol.id,
       birim_id: kullanici.birim.id,
       aktif: kullanici.aktif,
@@ -303,6 +304,9 @@ export default function KullanicilarPage() {
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Telefon
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Rol
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -320,9 +324,8 @@ export default function KullanicilarPage() {
                   {filteredKullanicilar.map((kullanici) => (
                     <tr
                       key={kullanici.id}
-                      className={`hover:bg-gray-50 transition-colors ${
-                        !kullanici.aktif ? 'bg-gray-100 opacity-60' : ''
-                      }`}
+                      className={`hover:bg-gray-50 transition-colors ${!kullanici.aktif ? 'bg-gray-100 opacity-60' : ''
+                        }`}
                     >
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         <div>{kullanici.ad} {kullanici.soyad}</div>
@@ -330,6 +333,9 @@ export default function KullanicilarPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {kullanici.email}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                        {kullanici.telefon ? formatPhoneNumber(kullanici.telefon) : '-'}
                       </td>
                       <td className="px-6 py-4">
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -480,9 +486,10 @@ export default function KullanicilarPage() {
                     type="tel"
                     value={formData.telefon}
                     onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
-                    placeholder="0262 XXX XX XX"
+                    placeholder="(5XX) XXX XX XX"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Başında 0 olmadan (örn: 532 123 45 67) veya formatlı girebilirsiniz.</p>
                 </div>
 
                 <div>

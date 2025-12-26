@@ -19,22 +19,26 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         const gorevId = params.id;
 
         const existingGorev = await prisma.gorev.findUnique({
-            where: { id: gorevId }
+            where: { id: gorevId },
+            include: { destek_verenler: true }
         });
 
         if (!existingGorev) {
             return NextResponse.json({ error: 'Görev bulunamadı' }, { status: 404 });
         }
 
-        // Yetki kontrolü: Başkasına ait görevi sadece yöneticiler (seviye >= 9) veya oluşturan güncelleyebilir
-        // Sorumlu kişi sadece durumu güncelleyebilir ve geri bildirim ekleyebilir.
-
         const isOwner = existingGorev.olusturan_id === user.id;
         const isResponsible = existingGorev.sorumlu_id === user.id;
-        const isManagement = user.rol?.seviye >= 9;
+        const isManagement = user.rol?.seviye >= 7; // Birim Yöneticisi ve üstü
+        const isSupport = existingGorev.destek_verenler.some(p => p.id === user.id);
 
-        if (!isOwner && !isResponsible && !isManagement) {
+        if (!isOwner && !isResponsible && !isManagement && !isSupport) {
             return NextResponse.json({ error: 'Bu görevi inceleme/güncelleme yetkiniz yok' }, { status: 403 });
+        }
+
+        // İptal yetkisi kontrolü (Sadece yöneticiler)
+        if (body.durum === 'IPTAL' && !isManagement) {
+            return NextResponse.json({ error: 'Görevi sadece yöneticiler iptal edebilir' }, { status: 403 });
         }
 
         // 1. Eğer geri bildirim/güncelleme mesajı varsa ekle
@@ -49,14 +53,53 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             });
         }
 
+        // Destek personel is only allowed to add notes (already handled above), cannot change task details
+        if (isSupport && !isOwner && !isResponsible && !isManagement) {
+            // Sadece mesaj ekleyebilir, başka update yapamaz
+            return NextResponse.json({ success: true, message: 'Not eklendi' });
+        }
+
         // 2. Görev detaylarını güncelle
         const updateData: any = {};
+
+        // Durum güncelleme
         if (body.durum) {
             updateData.durum = body.durum;
-            if (body.durum === 'TAMAMLANDI') {
+
+            // Tamamlanma veya İptal durumunda kayıt al
+            if (['TAMAMLANDI', 'IPTAL'].includes(body.durum)) {
                 updateData.tamamlanma_tarihi = new Date();
+                updateData.tamamlayan_id = user.id;
+                if (body.tamamlanma_notu) {
+                    updateData.tamamlanma_notu = body.tamamlanma_notu;
+                    // Ayrıca log olarak da ekle
+                    await prisma.gorevGuncelleme.create({
+                        data: {
+                            gorev_id: gorevId,
+                            personel_id: user.id,
+                            mesaj: `Görev ${body.durum === 'IPTAL' ? 'iptal edildi' : 'tamamlandı'}. Not: ${body.tamamlanma_notu}`,
+                        }
+                    });
+                }
+            } else if (existingGorev.durum !== body.durum) {
+                // Durum değişikliği logu (Otomatik)
+                await prisma.gorevGuncelleme.create({
+                    data: {
+                        gorev_id: gorevId,
+                        personel_id: user.id,
+                        mesaj: `Görev durumu değiştirildi: ${existingGorev.durum} -> ${body.durum}`,
+                    }
+                });
             }
         }
+
+        // Görseller (Sil-Güncelle)
+        if (body.gorsel_1 !== undefined) updateData.gorsel_1 = body.gorsel_1;
+        if (body.gorsel_1_not !== undefined) updateData.gorsel_1_not = body.gorsel_1_not;
+        if (body.gorsel_2 !== undefined) updateData.gorsel_2 = body.gorsel_2;
+        if (body.gorsel_2_not !== undefined) updateData.gorsel_2_not = body.gorsel_2_not;
+        if (body.gorsel_3 !== undefined) updateData.gorsel_3 = body.gorsel_3;
+        if (body.gorsel_3_not !== undefined) updateData.gorsel_3_not = body.gorsel_3_not;
 
         // Sadece sahip veya yönetici ana detayları değiştirebilir
         if (isOwner || isManagement) {
@@ -65,13 +108,29 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             if (body.oncelik) updateData.oncelik = body.oncelik;
             if (body.sorumlu_id) updateData.sorumlu_id = body.sorumlu_id;
             if (body.bitis_tarihi) updateData.bitis_tarihi = new Date(body.bitis_tarihi);
+
+            // Destek personellerini güncelle
+            if (body.destek_verenler) {
+                updateData.destek_verenler = {
+                    set: body.destek_verenler.map((id: string) => ({ id }))
+                };
+            }
         }
 
         const updatedGorev = await prisma.gorev.update({
             where: { id: gorevId },
             data: updateData,
             include: {
-                guncellemeler: true
+                guncellemeler: {
+                    orderBy: { created_at: 'desc' },
+                    include: { personel: { select: { ad: true, soyad: true } } }
+                },
+                destek_verenler: {
+                    select: { id: true, ad: true, soyad: true, profil_foto_url: true }
+                },
+                sorumlu: {
+                    select: { id: true, ad: true, soyad: true, profil_foto_url: true, unvan: true }
+                }
             }
         });
 

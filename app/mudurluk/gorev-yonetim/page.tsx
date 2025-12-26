@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import {
+    ClipboardList,
     Calendar as CalendarIcon,
     Activity,
     Plus,
     Clock,
     CheckCircle2,
+    XCircle,
     Users,
     ChevronLeft,
     ChevronRight,

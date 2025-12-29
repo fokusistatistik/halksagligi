@@ -102,23 +102,44 @@ export async function isBirimYoneticisi(): Promise<boolean> {
 /**
  * Check if user can access a specific birim
  */
-export async function canAccessBirim(targetBirimId: string): Promise<boolean> {
+
+/**
+ * Check if user can access a specific birim
+ */
+export async function canAccessBirim(targetBirimId: string | number): Promise<boolean> {
   const user = await getCurrentUser()
   if (!user) return false
 
-  // Admin ve Başkan her birime erişebilir
+  // Admin, Başkan ve Analist her birime erişebilir
   if (['ADMIN', 'BASKAN', 'ANALIST'].includes(user.rol.kod)) return true
 
-  // Diğerleri sadece kendi birimlerine
-  return user.birim_id === targetBirimId
+  const targetId = Number(targetBirimId)
+
+  // 1. Kendi birimi
+  if (user.birim_id === targetId) return true
+
+  // 2. Alt birim kontrolü (Koordinasyon birimindeyse)
+  // Eğer kullanıcı bir birim yöneticisi veya koordinatör ise alt birimlerine erişebilmeli
+  if (user.birim_id) {
+    const userBirim = await prisma.birim.findUnique({
+      where: { id: user.birim_id },
+      include: { alt_birimler: true }
+    })
+
+    if (userBirim?.alt_birimler.some(b => b.id === targetId)) return true
+  }
+
+  return false
 }
 
 /**
  * Check if user can manage (edit/delete) a personel
  */
-export async function canManagePersonel(targetPersonelId: string): Promise<boolean> {
+export async function canManagePersonel(targetPersonelId: string | number): Promise<boolean> {
   const user = await getCurrentUser()
   if (!user) return false
+
+  const targetId = Number(targetPersonelId)
 
   // Admin her personeli yönetebilir
   if (user.rol.kod === 'ADMIN') return true
@@ -129,14 +150,14 @@ export async function canManagePersonel(targetPersonelId: string): Promise<boole
   // Birim yöneticisi kendi birimindeki personeli yönetebilir
   if (user.rol.kod === 'BIRIM_YONETICISI') {
     const targetPersonel = await prisma.personel.findUnique({
-      where: { id: targetPersonelId },
+      where: { id: targetId },
       select: { birim_id: true }
     })
     return targetPersonel?.birim_id === user.birim_id
   }
 
   // Personel sadece kendini düzenleyebilir (profil)
-  return user.id === targetPersonelId
+  return user.id === targetId
 }
 
 /**
@@ -175,13 +196,27 @@ export async function requireAdmin() {
  * Returns birim_id filter if user should be restricted to their own unit
  * Returns undefined if user can see all units
  */
-export async function getBirimFilter(): Promise<{ birim_id?: string } | undefined> {
+export async function getBirimFilter(): Promise<any> {
   const user = await getCurrentUser()
   if (!user) return undefined
 
   // Admin, Başkan, ve Analist tüm birimleri görebilir
   if (['ADMIN', 'BASKAN', 'ANALIST'].includes(user.rol.kod)) {
     return {} // No filter - can see all
+  }
+
+  // Kullanıcının birim hiyerarşisini çek
+  if (user.birim_id) {
+    const userBirim = await prisma.birim.findUnique({
+      where: { id: user.birim_id },
+      include: { alt_birimler: true }
+    })
+
+    if (userBirim && userBirim.alt_birimler.length > 0) {
+      // Kendi birimi ve alt birimleri
+      const allowedIds = [user.birim_id, ...userBirim.alt_birimler.map(b => b.id)]
+      return { birim_id: { in: allowedIds } }
+    }
   }
 
   // Diğer roller sadece kendi birimlerini görebilir

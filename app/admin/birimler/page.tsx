@@ -8,19 +8,20 @@ import { TableSkeleton } from '@/components/loading-skeleton'
 import { EmptyState } from '@/components/empty-state'
 
 type BirimTip = 'MUDURLUK' | 'DIS_BIRIM'
-type DisBirimTip = 'ASM' | 'HSM' | 'VSD' | 'ILCE_SAGLIK'
+type DisBirimTip = 'ASM' | 'SHM' | 'ILCE_SAGLIK' | 'DIGER' | 'DIS_KURUM'
 
 interface Birim {
-  id: string
+  id: number
   ad: string
   kod: string
   tip: BirimTip
   dis_birim_tip?: DisBirimTip | null
-  ust_birim_id?: string | null
+  ust_birim_id?: number | null
   ust_birim?: {
-    id: string
+    id: number
     ad: string
   } | null
+  ilce?: string | null
   telefon?: string | null
   email?: string | null
   adres?: string | null
@@ -32,9 +33,10 @@ interface Birim {
 
 const disBirimTipLabels: Record<DisBirimTip, string> = {
   ASM: 'Aile Sağlığı Merkezi (ASM)',
-  HSM: 'Halk Sağlığı Merkezi (HSM)',
-  VSD: 'Verem Savaş Dispanseri (VSD)',
-  ILCE_SAGLIK: 'İlçe Sağlık Müdürlüğü'
+  SHM: 'Sağlıklı Hayat Merkezi (SHM)',
+  ILCE_SAGLIK: 'İlçe Sağlık Müdürlüğü',
+  DIGER: 'Diğer',
+  DIS_KURUM: 'Dış Kurum'
 }
 
 export default function BirimlerPage() {
@@ -49,6 +51,7 @@ export default function BirimlerPage() {
     tip: 'MUDURLUK' as BirimTip,
     dis_birim_tip: '' as DisBirimTip | '',
     ust_birim_id: '',
+    ilce: '',
     telefon: '',
     email: '',
     adres: '',
@@ -74,6 +77,56 @@ export default function BirimlerPage() {
     }
   }
 
+  const districts = [
+    'Başiskele', 'Çayırova', 'Darıca', 'Derince', 'Dilovası', 'Gebze',
+    'Gölcük', 'İzmit', 'Kandıra', 'Karamürsel', 'Kartepe', 'Körfez'
+  ];
+
+  useEffect(() => {
+    if (editingBirim) return;
+
+    if (!formData.ad) {
+      if (formData.kod) setFormData(prev => ({ ...prev, kod: '' }));
+      return;
+    }
+
+    const trMap: Record<string, string> = { 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ı': 'i', 'ö': 'o', 'ç': 'c', 'İ': 'i', 'Ğ': 'G', 'Ü': 'U', 'Ş': 'S', 'I': 'I', 'Ö': 'O', 'Ç': 'C', 'i': 'i' };
+    const normalize = (text: string) => text.split('').map(c => trMap[c] || c).join('').toUpperCase();
+
+    let prefix = 'MUD';
+    let suffix = normalize(formData.ad)
+      .replace(/\s*ILCE SAGLIK MUDURLUGU\s*/g, '')
+      .replace(/\s*AILE SAGLIGI MERKEZI\s*/g, '')
+      .replace(/\s*SAGLIKLI HAYAT MERKEZI\s*/g, '')
+      .replace(/\s*TOPLUM SAGLIGI MERKEZI\s*/g, '')
+      .replace(/[^A-Z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
+
+    let mid = '';
+
+    if (formData.tip === 'DIS_BIRIM') {
+      if (formData.dis_birim_tip === 'ASM') prefix = 'ASM';
+      else if (formData.dis_birim_tip === 'SHM') prefix = 'SHM';
+      else if (formData.dis_birim_tip === 'ILCE_SAGLIK') {
+        prefix = 'TSM';
+        suffix = '';
+      } else {
+        prefix = 'DIS';
+      }
+
+      if (formData.ilce) {
+        mid = '-' + normalize(formData.ilce);
+      }
+    }
+
+    const newCode = `${prefix}${mid}${suffix ? '-' + suffix : ''}`;
+
+    if (formData.kod !== newCode) {
+      setFormData(prev => ({ ...prev, kod: newCode }));
+    }
+  }, [formData.ad, formData.ilce, formData.tip, formData.dis_birim_tip, editingBirim]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -88,9 +141,27 @@ export default function BirimlerPage() {
       return
     }
 
+    if (!formData.ilce) {
+      toast.error('Lütfen ilçe seçiniz')
+      return
+    }
+
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       toast.error('Geçerli bir e-posta adresi giriniz')
       return
+    }
+
+    // Hiyerarşi Validasyonu: İlçe Sağlık Müdürlüğü seçildiyse ilçe kontrolü
+    if (formData.ust_birim_id) {
+      const parentUnit = birimler.find(b => b.id.toString() === formData.ust_birim_id)
+
+      // Eğer seçilen üst birim bir İlçe Sağlık Müdürlüğü ise, ilçelerin eşleşmesi gerekir
+      if (parentUnit && parentUnit.dis_birim_tip === 'ILCE_SAGLIK') {
+        if (parentUnit.ilce !== formData.ilce) {
+          toast.error(`Seçilen üst birim (${parentUnit.ilce}) ile birimin ilçesi (${formData.ilce}) aynı olmalıdır`)
+          return
+        }
+      }
     }
 
     try {
@@ -98,6 +169,7 @@ export default function BirimlerPage() {
         ad: formData.ad.trim(),
         kod: formData.kod.trim().toUpperCase(),
         tip: formData.tip,
+        ilce: formData.ilce,
         telefon: formData.telefon.trim() || null,
         email: formData.email.trim() || null,
         adres: formData.adres.trim() || null,
@@ -173,8 +245,9 @@ export default function BirimlerPage() {
       ad: birim.ad,
       kod: birim.kod,
       tip: birim.tip,
+      ilce: birim.ilce || '',
       dis_birim_tip: birim.dis_birim_tip || '',
-      ust_birim_id: birim.ust_birim_id || '',
+      ust_birim_id: birim.ust_birim_id?.toString() || '',
       telefon: birim.telefon || '',
       email: birim.email || '',
       adres: birim.adres || '',
@@ -189,6 +262,7 @@ export default function BirimlerPage() {
       ad: '',
       kod: '',
       tip: 'MUDURLUK',
+      ilce: '',
       dis_birim_tip: '',
       ust_birim_id: '',
       telefon: '',
@@ -262,9 +336,8 @@ export default function BirimlerPage() {
                   {mudurlukBirimleri.map((birim) => (
                     <div
                       key={birim.id}
-                      className={`rounded-lg shadow p-6 hover:shadow-md transition-all ${
-                        !birim.aktif ? 'bg-gray-100 border-2 border-red-200 opacity-70' : 'bg-white'
-                      }`}
+                      className={`rounded-lg shadow p-6 hover:shadow-md transition-all ${!birim.aktif ? 'bg-gray-100 border-2 border-red-200 opacity-70' : 'bg-white'
+                        }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -325,9 +398,8 @@ export default function BirimlerPage() {
                   {disBirimleri.map((birim) => (
                     <div
                       key={birim.id}
-                      className={`rounded-lg shadow p-6 hover:shadow-md transition-all ${
-                        !birim.aktif ? 'bg-gray-100 border-2 border-red-200 opacity-70' : 'bg-white'
-                      }`}
+                      className={`rounded-lg shadow p-6 hover:shadow-md transition-all ${!birim.aktif ? 'bg-gray-100 border-2 border-red-200 opacity-70' : 'bg-white'
+                        }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -354,6 +426,9 @@ export default function BirimlerPage() {
                             )}
                             {birim._count && (
                               <span>{birim._count.personeller} Personel</span>
+                            )}
+                            {birim.ilce && (
+                              <span>{birim.ilce}</span>
                             )}
                           </div>
                           {birim.telefon && (
@@ -458,10 +533,9 @@ export default function BirimlerPage() {
                   <input
                     type="text"
                     value={formData.kod}
-                    onChange={(e) => setFormData({ ...formData, kod: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    required
-                    placeholder="Örn: ASM-IZMIT-ALIKAHYA"
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-0 bg-gray-100 text-gray-500 cursor-not-allowed"
+                    placeholder="Otomatik oluşturulacak"
                   />
                 </div>
 
@@ -477,12 +551,34 @@ export default function BirimlerPage() {
                   >
                     <option value="">Seçiniz</option>
                     {birimler
-                      .filter((b) => b.tip === 'MUDURLUK' && b.id !== editingBirim?.id)
+                      .filter((b) =>
+                        b.tip === 'MUDURLUK' &&
+                        b.id !== editingBirim?.id
+                      )
                       .map((b) => (
                         <option key={b.id} value={b.id}>
                           {b.ad}
                         </option>
                       ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    İlçe *
+                  </label>
+                  <select
+                    value={formData.ilce}
+                    onChange={(e) => setFormData({ ...formData, ilce: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                  >
+                    <option value="">İlçe Seçiniz</option>
+                    {districts.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -553,11 +649,12 @@ export default function BirimlerPage() {
                     İptal
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+              </form >
+            </div >
+          </div >
+        )
+        }
+      </div >
+    </div >
   )
 }

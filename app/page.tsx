@@ -1,9 +1,11 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardOverview from '@/components/dashboard/dashboard-overview';
-import { Settings, Building2, BarChart3, HeartPulse, MapPin, ClipboardCheck } from 'lucide-react';
+import { Settings, Building2, BarChart3, HeartPulse, MapPin, ClipboardCheck, Loader2 } from 'lucide-react';
 
 function ModuleIcon({ name }: { name: string }) {
   const icons: any = {
@@ -18,7 +20,87 @@ function ModuleIcon({ name }: { name: string }) {
 }
 
 export default function HomePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!session) return;
+
+    const checkRedirect = async () => {
+      const user = session.user;
+      const rolKod = user.rol?.kod;
+      const birim = user.birim;
+
+      // 1. ADMIN ve BASKAN her zaman Dashboard'ı görür
+      if (rolKod === 'ADMIN' || rolKod === 'BASKAN') {
+        return;
+      }
+
+      setIsRedirecting(true);
+
+      // 2. Özel Birim/Şube Kontrolleri
+      if (birim) {
+        // SHM (Dış veya İç Koordinasyon)
+        if (birim.dis_birim_tip === 'SHM' || birim.kod === 'KOORD-SHM') {
+          router.replace('/shm');
+          return;
+        }
+        // ASM (Dış veya İç Koordinasyon)
+        if (birim.dis_birim_tip === 'ASM' || birim.kod === 'KOORD-ASM') {
+          router.replace('/asm');
+          return;
+        }
+        // İlçe Sağlık (Dış veya İç Koordinasyon)
+        if (birim.dis_birim_tip === 'ILCE_SAGLIK' || birim.kod === 'KOORD-ILCE') {
+          router.replace('/ilce-saglik');
+          return;
+        }
+
+        // 3. Genel "Dış Birim" Kısıtlaması
+        // Eğer yukarıdaki özel durumlara girmediyse ama Dış Birim ise
+        if (birim.tip === 'DIS_BIRIM') {
+          // Dış birim olup özel sayfası olmayanlar için fallback
+          router.replace('/settings');
+          return;
+        }
+      }
+
+      // 4. İç Birim Standart Personel Kısıtlaması
+      // "Rolü birim yöneticisi olmayan ... dashboard göremez"
+      // Müdürlükte olup Birim Yöneticisi olmayanlar Görev Modülüne veya Profil'e gitsin
+      if (rolKod !== 'BIRIM_YONETICISI') {
+        router.replace('/mudurluk/gorev-yonetim');
+        return;
+      }
+
+      // Eğer buraya kadar geldiyse Dashboard'ı görebilir (Örn: Merkez Birim Yöneticisi)
+      setIsRedirecting(false);
+    };
+
+    checkRedirect();
+
+  }, [session, status, router]);
+
+  if (status === 'loading' || isRedirecting) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-gray-500">Yönlendiriliyor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Giriş yapılıyor...</p>
+      </div>
+    );
+  }
 
   const modules = [
     {
@@ -71,34 +153,15 @@ export default function HomePage() {
     },
   ];
 
-  if (!session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Yönlendiriliyor...</p>
-      </div>
-    )
-  }
-
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
-      {/* Welcome Section */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Hoş geldiniz, {session?.user?.name}
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Halk Sağlığı Yönetim Sistemi (V1 Beta)
-          </p>
-        </div>
-
-      </div>
+      {/* Welcome Section Removed */}
 
       {/* Main Dashboard */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Genel Bakış ve İstatistikler</h2>
-          <span className="text-xs text-gray-500">Son güncelleme: 14:05</span>
+          <span className="text-xs text-gray-500">Son güncelleme: {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <DashboardOverview userRole={session?.user?.rol as any} />
       </section>

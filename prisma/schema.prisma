@@ -13,7 +13,7 @@ datasource db {
 // 1. PERSONEL TABLOSU
 // ============================================
 model Personel {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
 
   // ZORUNLU KİŞİSEL BİLGİLER
   tc_kimlik_no String @unique
@@ -24,11 +24,11 @@ model Personel {
   telefon      String
 
   // İLİŞKİLER
-  rol_id          String
+  rol_id          Int
   rol             Rol        @relation(fields: [rol_id], references: [id])
-  birim_id        String
-  birim           Birim      @relation(fields: [birim_id], references: [id])
-  yonetici_id     String?
+  birim_id        Int?
+  birim           Birim?     @relation(fields: [birim_id], references: [id])
+  yonetici_id     Int?
   yonetici        Personel?  @relation("YoneticiAlt", fields: [yonetici_id], references: [id], onDelete: SetNull)
   alt_personeller Personel[] @relation("YoneticiAlt")
 
@@ -60,8 +60,8 @@ model Personel {
   // ZAMAN DAMGALARI
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
-  created_by_id String?
-  updated_by_id String?
+  created_by_id Int?
+  updated_by_id Int?
 
   // GÖREV VE TAKVİM İLİŞKİLERİ
   olusturulan_gorevler  Gorev[]           @relation("OlusturanGorev")
@@ -83,7 +83,7 @@ model Personel {
 // 2. ROLLER TABLOSU
 // ============================================
 model Rol {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
 
   // TEMEL BİLGİLER
   kod      String  @unique // Sistem kodu
@@ -113,7 +113,7 @@ model Rol {
 // 3. YETKİLER TABLOSU
 // ============================================
 model Yetki {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
 
   // TEMEL BİLGİLER
   kod      String  @unique // Örn: gorev.olustur
@@ -137,9 +137,9 @@ model Yetki {
 // 4. ROL-YETKİ İLİŞKİ TABLOSU
 // ============================================
 model RolYetki {
-  rol_id   String
+  rol_id   Int
   rol      Rol    @relation(fields: [rol_id], references: [id], onDelete: Cascade)
-  yetki_id String
+  yetki_id Int
   yetki    Yetki  @relation(fields: [yetki_id], references: [id], onDelete: Cascade)
 
   created_at DateTime @default(now())
@@ -152,22 +152,23 @@ model RolYetki {
 // 5. BİRİMLER TABLOSU
 // ============================================
 model Birim {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
 
   // TEMEL BİLGİLER
   ad            String
   kod           String       @unique // Örn: KORFEZ-ASM
   tip           String       // Enum: BirimTip
   dis_birim_tip String?      // Enum: DisBirimTip (ASM, TSM, ADSM, ILCE_SAGLIK, DIGER)
+  ilce          String?      // Enum: Ilce (Kocaeli İlçeleri)
 
   // HİYERARŞİ
   // Dış birimler için zorunlu - Müdürlük birimlerine bağlı olmalı
-  ust_birim_id String?
+  ust_birim_id Int?
   ust_birim    Birim?  @relation("BirimHiyerarsi", fields: [ust_birim_id], references: [id], onDelete: SetNull)
   alt_birimler Birim[] @relation("BirimHiyerarsi")
 
   // SORUMLU
-  sorumlu_kisi_id String?
+  sorumlu_kisi_id Int?
 
   // İLETİŞİM
   adres   String?
@@ -176,7 +177,6 @@ model Birim {
 
   // DURUM
   aktif         Boolean   @default(true)
-  acilis_tarihi DateTime?
   notlar        String?
 
   // İLİŞKİLER
@@ -199,16 +199,16 @@ model Birim {
 // 6. AKTİVİTE LOGLARI (Audit Trail)
 // ============================================
 model AktiviteLog {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
 
   // KULLANICI BİLGİSİ
-  personel_id    String?
+  personel_id    Int?
   personel_email String?
 
   // İŞLEM BİLGİSİ
   islem    String  // personel.ekle, rol.guncelle, veri.onayla vb.
   tablo    String  // personel, rol, birim, veri_giris
-  kayit_id String? // İşlem yapılan kaydın ID'si
+  kayit_id String? // İşlem yapılan kaydın ID'si (String olarak kalacak)
   aciklama String?
 
   created_at DateTime @default(now())
@@ -225,12 +225,12 @@ model AktiviteLog {
 
 // Dış Birim Veri Girişleri (ASM, HSM, VSD, İlçe Sağlık)
 model SHMVeriGiris {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
 
   // İLİŞKİLER
-  birim_id    String // Dış birim ID'si
+  birim_id    Int // Dış birim ID'si
   birim       Birim  @relation("BirimVeriGiris", fields: [birim_id], references: [id], onDelete: Cascade)
-  personel_id String
+  personel_id Int
 
   // TARİH BİLGİSİ
   tarih DateTime
@@ -249,7 +249,7 @@ model SHMVeriGiris {
 
   // ONAY DURUMU
   onay_durumu           String @default("BEKLEMEDE") // Enum: OnayDurumu
-  onaylayan_personel_id String?
+  onaylayan_personel_id Int?
   onay_tarihi           DateTime?
   onay_notu             String?
   red_gerekce           String? // Red gerekçesi
@@ -257,8 +257,8 @@ model SHMVeriGiris {
   // ZAMAN DAMGALARI
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
-  created_by_id String?
-  updated_by_id String?
+  created_by_id Int?
+  updated_by_id Int?
 
   @@unique([birim_id, tarih, personel_id]) // Aynı gün aynı kişi aynı birimde tek kayıt
   @@index([birim_id])
@@ -272,8 +272,8 @@ model SHMVeriGiris {
 // 8. ŞİFRE SIFIRLAMA TOKEN
 // ============================================
 model PasswordResetToken {
-  id           String   @id @default(uuid())
-  personel_id  String
+  id           Int    @id @default(autoincrement())
+  personel_id  Int
   tc_kimlik_no String
   email        String
   token        String   @unique @default(uuid())
@@ -291,7 +291,7 @@ model PasswordResetToken {
 // 9. GÖREVLER TABLOSU
 // ============================================
 model Gorev {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
 
   baslik      String
   aciklama    String?
@@ -304,7 +304,7 @@ model Gorev {
   is_suresiz       Boolean   @default(false)
   
   // TAMAMLANMA BİLGİLERİ
-  tamamlayan_id     String?
+  tamamlayan_id     Int?
   tamamlayan        Personel? @relation("TamamlayanPersonel", fields: [tamamlayan_id], references: [id])
   tamamlanma_notu   String?
 
@@ -317,19 +317,21 @@ model Gorev {
   gorsel_3_not      String?
 
   // İLİŞKİLER
-  olusturan_id String
+  olusturan_id Int
   olusturan    Personel @relation("OlusturanGorev", fields: [olusturan_id], references: [id])
   
-  sorumlu_id   String
+  sorumlu_id   Int
   sorumlu      Personel @relation("SorumluGorev", fields: [sorumlu_id], references: [id])
 
   destek_verenler Personel[] @relation("DestekVerenGorev")
 
-  birim_id     String?
+  birim_id     Int?
   birim        Birim?   @relation(fields: [birim_id], references: [id])
 
   // Geri bildirimler ve görseller
   guncellemeler GorevGuncelleme[]
+
+  kod         String?   @unique // GÖREV-YY-000001
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -337,16 +339,17 @@ model Gorev {
   @@index([sorumlu_id])
   @@index([olusturan_id])
   @@index([durum])
+  @@index([kod])
   @@map("gorevler")
 }
 
 model GorevGuncelleme {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
   
-  gorev_id    String
+  gorev_id    Int
   gorev       Gorev    @relation(fields: [gorev_id], references: [id], onDelete: Cascade)
   
-  personel_id String
+  personel_id Int
   personel    Personel @relation(fields: [personel_id], references: [id])
   
   mesaj       String
@@ -362,23 +365,27 @@ model GorevGuncelleme {
 // 10. TAKVİM ETKİNLİKLERİ
 // ============================================
 model TakvimEtkinlik {
-  id String @id @default(uuid())
+  id Int @id @default(autoincrement())
 
   baslik      String
   aciklama    String?
-  tip         String   // TOPLANTI, EGITIM, IZIN, DENETIM, DIGER
+  tip         String   // TOPLANTI, EGITIM, IZIN, DENETIM, DIGER, ZIYARET, STAND, TARAMA
   renk        String?  // Otomatik renklendirme için
   
+  kod         String?   @unique // TAKVİM-YY-0000001
+  durum       String    @default("AKTIF") // AKTIF, IPTAL
+  yer         String    @default("KURUM_ICI") // KURUM_ICI, KURUM_DISI
+
   baslangic   DateTime
   bitis       DateTime
   
   tum_gun     Boolean @default(false)
 
   // İLİŞKİLER
-  personel_id String
+  personel_id Int
   personel    Personel @relation("PersonelEtkinlik", fields: [personel_id], references: [id], onDelete: Cascade)
   
-  olusturan_id String
+  olusturan_id Int
   olusturan    Personel @relation("OlusturanEtkinlik", fields: [olusturan_id], references: [id])
 
   created_at DateTime @default(now())
@@ -386,6 +393,6 @@ model TakvimEtkinlik {
 
   @@index([personel_id])
   @@index([baslangic])
+  @@index([kod])
   @@map("takvim_etkinlikleri")
 }
-

@@ -12,11 +12,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const parsedId = parseInt(id)
+    if (isNaN(parsedId)) return NextResponse.json({ error: 'Geçersiz ID' }, { status: 400 })
+
     const user = await getCurrentUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const personel = await prisma.personel.findUnique({
-      where: { id },
+      where: { id: parsedId },
       include: { rol: true, birim: true, yonetici: true },
     })
 
@@ -37,20 +40,28 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const parsedId = parseInt(id)
+    if (isNaN(parsedId)) return NextResponse.json({ error: 'Geçersiz ID' }, { status: 400 })
+
     const user = await getCurrentUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!(await canManagePersonel(id))) {
+    if (!(await canManagePersonel(parsedId))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
     const { password, ...updateData } = body
 
+    // ID Convert
+    if (updateData.rol_id) updateData.rol_id = Number(updateData.rol_id)
+    if (updateData.birim_id) updateData.birim_id = Number(updateData.birim_id)
+    if (updateData.yonetici_id) updateData.yonetici_id = Number(updateData.yonetici_id)
+
     // Temizleme: Boş string olan (ama zorunlu olmayan) alanları null yap
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === '') {
-        delete updateData[key];
+        updateData[key] = null;
       }
     });
 
@@ -62,12 +73,86 @@ export async function PUT(
       updateData.acil_durum_telefon = cleanPhoneNumber(updateData.acil_durum_telefon);
     }
 
-    if (password && password.trim() !== '') {
+    // GÜVENLİK KONTROLÜ
+    if (user.rol.kod !== 'ADMIN' && user.rol.kod !== 'BASKAN') {
+      // 1. Kendi profilini düzenliyorsa kritik alanları değiştiremez
+      if (user.id === parsedId) {
+        if (updateData.rol_id || updateData.birim_id || updateData.aktif !== undefined) {
+          return NextResponse.json({ error: 'Kendi rol, birim veya durum bilgilerinizi değiştiremezsiniz' }, { status: 403 })
+        }
+      } else {
+        // 2. Başkasını düzenliyorsa, hedef personelin seviyesi kontrol edilir
+        const targetPersonel = await prisma.personel.findUnique({
+          where: { id: parsedId },
+          include: { rol: true }
+        });
+
+        // Eşit veya yüksek yetkiliyi düzenleyemez
+        if (targetPersonel && targetPersonel.rol.seviye >= user.rol.seviye) {
+          return NextResponse.json(
+            { error: 'Sizden yüksek veya eşit yetkideki bir personeli düzenleyemezsiniz' },
+            { status: 403 }
+          )
+        }
+
+        // 3. Birim Değişikliği Kısıtı
+        if (updateData.birim_id && updateData.birim_id !== user.birim_id) {
+          return NextResponse.json(
+            { error: 'Personeli başka bir birime taşıma yetkiniz yok' },
+            { status: 403 }
+          )
+        }
+
+        // 4. Rol Değişikliği Kısıtı (Yükseltme yapılamaz)
+        if (updateData.rol_id) {
+          const atanacakRol = await prisma.rol.findUnique({ where: { id: updateData.rol_id } })
+          if (!atanacakRol) {
+            return NextResponse.json({ error: 'Geçersiz rol' }, { status: 400 })
+          }
+          if (atanacakRol.seviye >= user.rol.seviye) {
+            return NextResponse.json(
+              { error: 'Kendi yetki seviyenizden yüksek veya eşit bir rol atayamazsınız' },
+              { status: 403 }
+            )
+          }
+        }
+      }
+    }
+
+    // Password Change Logic
+    if (updateData.newPassword) {
+      if (!updateData.currentPassword) {
+        return NextResponse.json({ error: 'Mevcut şifrenizi girmelisiniz.' }, { status: 400 });
+      }
+
+      // Verify current password
+      const currentPersonel = await prisma.personel.findUnique({ where: { id: parsedId } });
+      if (!currentPersonel) return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
+
+      const isValid = await bcrypt.compare(updateData.currentPassword, currentPersonel.password);
+      if (!isValid) {
+        return NextResponse.json({ error: 'Mevcut şifreniz hatalı.' }, { status: 400 });
+      }
+
+      // Hash new password
+      updateData.password = await bcrypt.hash(updateData.newPassword, 10);
+
+      // Remove temp fields
+      delete updateData.currentPassword;
+      delete updateData.newPassword;
+      delete updateData.confirmPassword;
+    } else if (password && password.trim() !== '' && await canManagePersonel(parsedId)) {
+      // Admin force update
       updateData.password = await bcrypt.hash(password, 10)
     }
 
+    // Prisma işleminden önce veritabanında olmayan geçici alanları kesinlikle temizle
+    delete updateData.currentPassword;
+    delete updateData.newPassword;
+    delete updateData.confirmPassword;
+
     const updatedPersonel = await prisma.personel.update({
-      where: { id },
+      where: { id: parsedId },
       data: { ...updateData, updated_by_id: user.id },
       include: { rol: true, birim: true },
     })
@@ -116,14 +201,17 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const parsedId = parseInt(id)
+    if (isNaN(parsedId)) return NextResponse.json({ error: 'Geçersiz ID' }, { status: 400 })
+
     const user = await getCurrentUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!(await canManagePersonel(id))) {
+    if (!(await canManagePersonel(parsedId))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    await prisma.personel.delete({ where: { id } })
+    await prisma.personel.delete({ where: { id: parsedId } })
 
     await logAktivite({
       personel_id: user.id,

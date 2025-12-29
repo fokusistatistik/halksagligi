@@ -35,6 +35,11 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin.");
           }
 
+          // Birim aktif mi kontrol et (Eğer birime bağlıysa)
+          if (personel.birim && !personel.birim.aktif) {
+            throw new Error("Bağlı olduğunuz birim pasif durumda. Giriş yapamazsınız.");
+          }
+
           // Şifre kontrolü
           const isPasswordValid = await bcrypt.compare(credentials.password, personel.password);
 
@@ -50,7 +55,7 @@ export const authOptions: NextAuthOptions = {
 
           // Return flat object for NextAuth serialization
           return {
-            id: personel.id,
+            id: personel.id.toString(),
             tc_kimlik_no: personel.tc_kimlik_no,
             email: personel.email,
             name: `${personel.ad} ${personel.soyad}`,
@@ -62,12 +67,12 @@ export const authOptions: NextAuthOptions = {
               ad: personel.rol.ad,
               seviye: personel.rol.seviye,
             },
-            birim: {
+            birim: personel.birim ? {
               id: personel.birim.id,
               ad: personel.birim.ad,
               kod: personel.birim.kod,
               tip: personel.birim.tip,
-            },
+            } : null,
           };
         } catch (error) {
           // Re-throw without logging sensitive data
@@ -111,7 +116,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 12 * 60 * 60, // 12 hours (Mesai süresi güvenliği)
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',

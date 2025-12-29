@@ -42,7 +42,7 @@ async function main() {
       seviye: 7,
       renk: '#059669',
       icon: 'briefcase',
-      aciklama: 'Dış birimlerde (ASM, HSM, VSD, İlçe Sağlık) birim yöneticisi - Tüm verileri görür, girer ve onaylar'
+      aciklama: 'Dış birimlerde (ASM, SHM, VSD, İlçe Sağlık) birim yöneticisi - Tüm verileri görür, girer ve onaylar'
     },
     {
       kod: 'PERSONEL',
@@ -216,6 +216,7 @@ async function main() {
       'personel.profil_duzenle'
     ],
 
+    // MISAFIR:
     MISAFIR: [
       'rapor.genel',
       'takvim.goruntule'
@@ -253,14 +254,15 @@ async function main() {
   // ============================================
   console.log('🏢 Birimler oluşturuluyor...')
 
-  // MÜDÜRLÜK BİRİMLERİ
+  // MÜDÜRLÜK (MERKEZ)
   const halkSagligiBirim = await prisma.birim.upsert({
     where: { kod: 'MUDURLUK-MERKEZ' },
     update: {},
     create: {
-      ad: 'Halk Sağlığı Müdürlüğü',
+      ad: 'Halk Sağlığı Başkanlığı',
       kod: 'MUDURLUK-MERKEZ',
       tip: 'MUDURLUK',
+      ilce: 'İzmit',
       adres: 'Kocaeli İl Sağlık Müdürlüğü',
       telefon: '0262 XXX XX XX',
       email: 'halksagligi@saglik.gov.tr',
@@ -268,156 +270,216 @@ async function main() {
     }
   })
 
-  const asmSubesi = await prisma.birim.upsert({
-    where: { kod: 'MUDURLUK-ASM-SUBE' },
+  // KOORDİNASYON BİRİMLERİ (İÇ BİRİMLER)
+
+  // 1. İlçe Sağlık Koordinasyon
+  const ilceSaglikKoord = await prisma.birim.upsert({
+    where: { kod: 'KOORD-ILCE' },
     update: {},
     create: {
-      ad: 'ASM Şubesi',
-      kod: 'MUDURLUK-ASM-SUBE',
+      ad: 'İlçe Sağlık Koordinasyon Birimi',
+      kod: 'KOORD-ILCE',
       tip: 'MUDURLUK',
+      ilce: 'İzmit',
       ust_birim_id: halkSagligiBirim.id,
-      telefon: '0262 XXX XX XX',
       aktif: true
     }
   })
 
-  const hsmSubesi = await prisma.birim.upsert({
-    where: { kod: 'MUDURLUK-HSM-SUBE' },
+  // 2. SHM Koordinasyon
+  const shmKoord = await prisma.birim.upsert({
+    where: { kod: 'KOORD-SHM' },
     update: {},
     create: {
-      ad: 'HSM Şubesi (Sağlıklı Hayat Merkezi)',
-      kod: 'MUDURLUK-HSM-SUBE',
+      ad: 'Sağlıklı Hayat Merkezleri (SHM) Birimi',
+      kod: 'KOORD-SHM',
       tip: 'MUDURLUK',
+      ilce: 'İzmit',
       ust_birim_id: halkSagligiBirim.id,
-      telefon: '0262 XXX XX XX',
       aktif: true
     }
   })
 
-  const vsdSubesi = await prisma.birim.upsert({
-    where: { kod: 'MUDURLUK-VSD-SUBE' },
+  // 3. ASM Koordinasyon
+  const asmKoord = await prisma.birim.upsert({
+    where: { kod: 'KOORD-ASM' },
     update: {},
     create: {
-      ad: 'VSD Şubesi (Verem Savaş)',
-      kod: 'MUDURLUK-VSD-SUBE',
+      ad: 'Aile Hekimliği (ASM) Birimi',
+      kod: 'KOORD-ASM',
       tip: 'MUDURLUK',
+      ilce: 'İzmit',
       ust_birim_id: halkSagligiBirim.id,
-      telefon: '0262 XXX XX XX',
       aktif: true
     }
   })
 
-  // DIŞ BİRİMLER - ASM Örnekleri
-  await prisma.birim.upsert({
-    where: { kod: 'ASM-IZMIT-ALIKAHYA' },
-    update: {},
+  // DIŞ BİRİMLER
+
+  // İzmit İlçe Sağlık Müdürlüğü -> İlçe Koord'a bağlı
+  const izmitIlceSaglik = await prisma.birim.upsert({
+    where: { kod: 'ILCE-IZMIT' },
+    update: { ust_birim_id: ilceSaglikKoord.id },
     create: {
-      ad: 'İzmit Alikahya Aile Sağlığı Merkezi',
-      kod: 'ASM-IZMIT-ALIKAHYA',
+      ad: 'İzmit İlçe Sağlık Müdürlüğü',
+      kod: 'ILCE-IZMIT',
       tip: 'DIS_BIRIM',
-      dis_birim_tip: 'ASM',
-      ust_birim_id: asmSubesi.id,
-      telefon: '0262 XXX XX XX',
+      dis_birim_tip: 'ILCE_SAGLIK',
+      ilce: 'İzmit',
+      ust_birim_id: ilceSaglikKoord.id,
       aktif: true
     }
   })
 
+  // Kartepe İlçe Sağlık Müdürlüğü -> İlçe Koord'a bağlı
+  await prisma.birim.upsert({
+    where: { kod: 'ILCE-KARTEPE' },
+    update: { ust_birim_id: ilceSaglikKoord.id },
+    create: {
+      ad: 'Kartepe İlçe Sağlık Müdürlüğü',
+      kod: 'ILCE-KARTEPE',
+      tip: 'DIS_BIRIM',
+      dis_birim_tip: 'ILCE_SAGLIK',
+      ilce: 'Kartepe',
+      ust_birim_id: ilceSaglikKoord.id,
+      aktif: true
+    }
+  })
+
+  // Akçakoca Sağlıklı Hayat Merkezi -> SHM Koord'a bağlı
+  const akcakocaSHM = await prisma.birim.upsert({
+    where: { kod: 'SHM-IZMIT-AKCAKOCA' },
+    update: { ust_birim_id: shmKoord.id },
+    create: {
+      ad: 'İzmit Akçakoca Sağlıklı Hayat Merkezi',
+      kod: 'SHM-IZMIT-AKCAKOCA',
+      tip: 'DIS_BIRIM',
+      dis_birim_tip: 'SHM',
+      ilce: 'İzmit',
+      ust_birim_id: shmKoord.id,
+      aktif: true
+    }
+  })
+
+  // Gebze Merkez ASM -> ASM Koord'a bağlı
   await prisma.birim.upsert({
     where: { kod: 'ASM-GEBZE-MERKEZ' },
-    update: {},
+    update: { ust_birim_id: asmKoord.id },
     create: {
-      ad: 'Gebze Merkez Aile Sağlığı Merkezi',
+      ad: 'Gebze Merkez 1 Nolu ASM',
       kod: 'ASM-GEBZE-MERKEZ',
       tip: 'DIS_BIRIM',
       dis_birim_tip: 'ASM',
-      ust_birim_id: asmSubesi.id,
-      telefon: '0262 XXX XX XX',
+      ilce: 'Gebze',
+      ust_birim_id: asmKoord.id,
       aktif: true
     }
   })
 
-  // DIŞ BİRİMLER - HSM Örneği
-  await prisma.birim.upsert({
-    where: { kod: 'HSM-KOCAELI' },
-    update: {},
-    create: {
-      ad: 'Kocaeli Sağlıklı Hayat Merkezi',
-      kod: 'HSM-KOCAELI',
-      tip: 'DIS_BIRIM',
-      dis_birim_tip: 'HSM',
-      ust_birim_id: hsmSubesi.id,
-      telefon: '0262 XXX XX XX',
-      email: 'hsm@saglik.gov.tr',
-      aktif: true
-    }
-  })
-
-  // DIŞ BİRİMLER - VSD Örneği
-  await prisma.birim.upsert({
-    where: { kod: 'VSD-KOCAELI' },
-    update: {},
-    create: {
-      ad: 'Kocaeli Verem Savaş Dispanseri',
-      kod: 'VSD-KOCAELI',
-      tip: 'DIS_BIRIM',
-      dis_birim_tip: 'VSD',
-      ust_birim_id: vsdSubesi.id,
-      telefon: '0262 XXX XX XX',
-      aktif: true
-    }
-  })
-
-  // DIŞ BİRİMLER - İlçe Sağlık Örneği
-  await prisma.birim.upsert({
-    where: { kod: 'ILCE-GEBZE' },
-    update: {},
-    create: {
-      ad: 'Gebze İlçe Sağlık Müdürlüğü',
-      kod: 'ILCE-GEBZE',
-      tip: 'DIS_BIRIM',
-      dis_birim_tip: 'ILCE_SAGLIK',
-      ust_birim_id: halkSagligiBirim.id,
-      telefon: '0262 XXX XX XX',
-      aktif: true
-    }
-  })
-
-  console.log('✅ Birimler oluşturuldu (Müdürlük ve Dış Birimler)')
+  console.log('✅ Birimler oluşturuldu')
 
   // ============================================
-  // 5. İLK ADMIN KULLANICISI OLUŞTUR
+  // 5. KULLANICILAR OLUŞTUR
   // ============================================
-  console.log('👤 Admin kullanıcısı oluşturuluyor...')
+  console.log('👤 Kullanıcılar oluşturuluyor...')
 
   const adminRol = createdRoller.find(r => r.kod === 'ADMIN')
+  const baskanRol = createdRoller.find(r => r.kod === 'BASKAN')
+  const yoneticiRol = createdRoller.find(r => r.kod === 'BIRIM_YONETICISI')
+
   const hashedPassword = await bcrypt.hash('admin123', 10)
 
+  // 1. ADMIN (Sistem Admin)
   await prisma.personel.upsert({
-    where: { email: 'admin@saglik.gov.tr' },
+    where: { tc_kimlik_no: '11111111111' },
     update: {
+      rol_id: adminRol!.id,
+      birim_id: halkSagligiBirim.id,
       profil_foto_url: 'https://static.fokusistatistik.com/CRM/yonetim_250001_emre_bostanoglu.jpeg',
     },
     create: {
-      tc_kimlik_no: '12345678901',
-      ad: 'Admin',
-      soyad: 'Kullanıcı',
+      tc_kimlik_no: '11111111111',
+      ad: 'Sistem',
+      soyad: 'Admin',
       email: 'admin@saglik.gov.tr',
       password: hashedPassword,
-      telefon: '0555 XXX XX XX',
+      telefon: '05550000000',
       rol_id: adminRol!.id,
-      birim_id: halkSagligiBirim.id,
+      birim_id: halkSagligiBirim.id, // Admin Başkanlığa bağlı yapalım veya ayrı
       unvan: 'Sistem Yöneticisi',
       profil_foto_url: 'https://static.fokusistatistik.com/CRM/yonetim_250001_emre_bostanoglu.jpeg',
       aktif: true
     }
   })
 
-  console.log('✅ Admin kullanıcısı oluşturuldu')
-  console.log('')
+  // 2. HALK SAĞLIĞI BAŞKANI (Ahmet Yılmaz)
+  await prisma.personel.upsert({
+    where: { tc_kimlik_no: '22222222222' },
+    update: {},
+    create: {
+      tc_kimlik_no: '22222222222',
+      ad: 'Ahmet',
+      soyad: 'Yılmaz',
+      email: 'ahmet.yilmaz@saglik.gov.tr',
+      password: hashedPassword,
+      telefon: '05552222222',
+      rol_id: baskanRol!.id,
+      birim_id: halkSagligiBirim.id,
+      unvan: 'Halk Sağlığı Başkanı',
+      profil_foto_url: 'https://ui-avatars.com/api/?name=Ahmet+Yilmaz&background=random',
+      aktif: true
+    }
+  })
+
+  // 3. İZMİT BİRİM YÖNETİCİSİ (Mehmet Demir)
+  await prisma.personel.upsert({
+    where: { tc_kimlik_no: '33333333333' },
+    update: {},
+    create: {
+      tc_kimlik_no: '33333333333',
+      ad: 'Mehmet',
+      soyad: 'Demir',
+      email: 'mehmet.demir@saglik.gov.tr',
+      password: hashedPassword,
+      telefon: '05553333333',
+      rol_id: yoneticiRol!.id,
+      birim_id: izmitIlceSaglik.id,
+      unvan: 'Birim Yöneticisi',
+      ilce: 'İzmit',
+      profil_foto_url: 'https://ui-avatars.com/api/?name=Mehmet+Demir&background=random',
+      aktif: true
+    }
+  })
+
+  // 4. AKÇAKOCA SHM BİRİM YÖNETİCİSİ (Ayşe Kaya)
+  await prisma.personel.upsert({
+    where: { tc_kimlik_no: '44444444444' },
+    update: {},
+    create: {
+      tc_kimlik_no: '44444444444',
+      ad: 'Ayşe',
+      soyad: 'Kaya',
+      email: 'ayse.kaya@saglik.gov.tr',
+      password: hashedPassword,
+      telefon: '05554444444',
+      rol_id: yoneticiRol!.id,
+      birim_id: akcakocaSHM.id,
+      unvan: 'Birim Yöneticisi',
+      ilce: 'İzmit',
+      profil_foto_url: 'https://ui-avatars.com/api/?name=Ayse+Kaya&background=random',
+      aktif: true
+    }
+  })
+
   console.log('🎉 Seed data tamamlandı!')
-  console.log('🆔 Admin TC: 12345678901')
-  console.log('🔒 Admin Şifre: admin123')
-  console.log('')
+  console.log('----------------------------------------------------')
+  console.log('🔑 DEMO KULLANICI GİRİŞ BİLGİLERİ (Şifre: admin123)')
+  console.log('----------------------------------------------------')
+  console.log('1. SİSTEM YÖNETİCİSİ: TC [11111111111] (admin@saglik.gov.tr)')
+  console.log('2. BAŞKAN:            TC [22222222222] (Ahmet Yılmaz)')
+  console.log('3. BİRİM YÖNETİCİSİ:  TC [33333333333] (Mehmet Demir - İzmit İlçe Sağlık)')
+  console.log('4. BİRİM YÖNETİCİSİ:  TC [44444444444] (Ayşe Kaya    - Akçakoca SHM)')
+  console.log('----------------------------------------------------')
 }
 
 main()

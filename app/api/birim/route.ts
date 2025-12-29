@@ -34,6 +34,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+
+    // Convert numeric fields
+    if (body.ust_birim_id) {
+      body.ust_birim_id = parseInt(body.ust_birim_id)
+    }
+
     const birim = await prisma.birim.create({ data: body })
 
     return NextResponse.json({ success: true, data: birim }, { status: 201 })

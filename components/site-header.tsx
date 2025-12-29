@@ -50,13 +50,13 @@ export default function SiteHeader() {
                             <img
                                 src="https://static.fokusistatistik.com/resimler/kism.png"
                                 alt="Kocaeli İSM"
-                                className="h-8 md:h-10 w-auto"
+                                className="h-9 md:h-12 w-auto"
                             />
                             <span className="text-gray-300 mx-1 md:mx-2 hidden sm:inline">|</span>
                             <img
                                 src="https://static.fokusistatistik.com/halksagligi/genel/asyalogo2.png"
                                 alt="ASYA"
-                                className="h-8 md:h-10 w-auto"
+                                className="h-9 md:h-12 w-auto"
                             />
                             <span className="text-gray-300 mx-1 md:mx-2 hidden sm:inline">|</span>
                             <img

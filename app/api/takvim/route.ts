@@ -22,13 +22,14 @@ export async function GET(request: Request) {
 
         const isManagement = user.rol?.seviye >= 9;
 
-        const where: any = {};
+        const where: any = {
+            durum: { not: 'IPTAL' } // İptal edilenleri gösterme
+        };
 
         if (targetUserId && isManagement) {
-            where.personel_id = targetUserId;
+            where.personel_id = parseInt(targetUserId); // Ensure int
         } else if (isManagement && !targetUserId) {
             // Yönetici tüm personel takvimlerini görebilir
-            // where.personel_id kısıtlaması yapmıyoruz
         } else {
             where.personel_id = user.id;
         }
@@ -68,25 +69,49 @@ export async function POST(request: Request) {
         const user = session.user as any;
         const body = await request.json();
 
-        // Yetki kontrolü: Başkanlar başkasının takvimine ekleme yapabilir
-        const isManagement = user.rol?.seviye >= 9;
-        const targetPersonelId = body.personel_id || user.id;
+        // Herkes sadece kendisine etkinlik oluşturabilir
+        const targetPersonelId = user.id;
 
-        if (targetPersonelId !== user.id && !isManagement) {
-            return NextResponse.json({ error: 'Başkasının takvimine etkinlik ekleme yetkiniz yok' }, { status: 403 });
+        // Generate Kod (TAKVİM-YY-0000001)
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        const prefix = `TAKVİM-${currentYear}-`;
+
+        const lastEtkinlik = await prisma.takvimEtkinlik.findFirst({
+            where: {
+                kod: { startsWith: prefix }
+            },
+            orderBy: {
+                kod: 'desc'
+            },
+            select: { kod: true }
+        });
+
+        let nextSeq = 1;
+        if (lastEtkinlik && lastEtkinlik.kod) {
+            const parts = lastEtkinlik.kod.split('-');
+            const lastSeqStr = parts[parts.length - 1];
+            const lastSeq = parseInt(lastSeqStr);
+            if (!isNaN(lastSeq)) {
+                nextSeq = lastSeq + 1;
+            }
         }
+
+        const newKod = `${prefix}${nextSeq.toString().padStart(7, '0')}`;
 
         const etkinlik = await prisma.takvimEtkinlik.create({
             data: {
+                kod: newKod,
                 baslik: body.baslik,
                 aciklama: body.aciklama,
                 tip: body.tip || 'DIGER',
+                yer: body.yer || 'KURUM_ICI',
+                durum: 'AKTIF',
                 renk: body.renk,
                 baslangic: new Date(body.baslangic),
                 bitis: new Date(body.bitis),
                 tum_gun: body.tum_gun || false,
-                personel_id: targetPersonelId,
-                olusturan_id: user.id
+                personel_id: parseInt(targetPersonelId),
+                olusturan_id: parseInt(user.id)
             }
         });
 

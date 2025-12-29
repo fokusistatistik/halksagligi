@@ -41,6 +41,7 @@ import { Textarea } from '@/components/ui/textarea';
 // --- Types ---
 type Gorev = {
     id: string;
+    kod?: string; // GÖREV-YY-000001
     baslik: string;
     aciklama: string;
     durum: 'BEKLEYEN' | 'DEVAM_EDEN' | 'TAMAMLANDI' | 'IPTAL';
@@ -67,9 +68,12 @@ type Gorev = {
 
 type Etkinlik = {
     id: string;
+    kod?: string; // TAKVİM-YY-0000001
     baslik: string;
     aciklama?: string;
     tip: string;
+    yer?: 'KURUM_ICI' | 'KURUM_DISI';
+    durum?: string;
     renk?: string;
     baslangic: string;
     bitis: string;
@@ -103,6 +107,7 @@ export default function GorevYonetimPage() {
     const [isGorevModalOpen, setIsGorevModalOpen] = useState(false);
     const [isEtkinlikModalOpen, setIsEtkinlikModalOpen] = useState(false);
     const [selectedGorev, setSelectedGorev] = useState<Gorev | null>(null);
+    const [selectedEtkinlik, setSelectedEtkinlik] = useState<Etkinlik | null>(null);
     const [gorevUpdate, setGorevUpdate] = useState({ durum: '', mesaj: '', tamamlanma_notu: '', gorsel_url: '' });
 
     // Forms
@@ -125,6 +130,7 @@ export default function GorevYonetimPage() {
         baslik: '',
         aciklama: '',
         tip: 'TOPLANTI',
+        yer: 'KURUM_ICI' as 'KURUM_ICI' | 'KURUM_DISI',
         baslangic: '',
         bitis: '',
         personel_id: ''
@@ -141,7 +147,7 @@ export default function GorevYonetimPage() {
             fetchData();
             fetchPersoneller();
         }
-    }, [session, filterSorumlu]); // Refetch when filter changes
+    }, [session, filterSorumlu, viewDate]); // Refetch when filter or viewDate changes
 
     const fetchData = async () => {
         setLoading(true);
@@ -152,13 +158,14 @@ export default function GorevYonetimPage() {
             if (filterSorumlu && filterSorumlu !== 'all') params.append('userId', filterSorumlu);
             if (params.toString()) gUrl += `?${params.toString()}`;
 
-            // Build Etkinlik URL (Daily)
-            const today = selectedDate || new Date();
-            const startOfDay = new Date(today);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(today);
-            endOfDay.setHours(23, 59, 59, 999);
-            const eUrl = `/api/takvim?start=${startOfDay.toISOString()}&end=${endOfDay.toISOString()}`;
+            // Build Etkinlik URL (Monthly based on viewDate)
+            const startOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+            const endOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0, 23, 59, 59);
+
+            let eUrl = `/api/takvim?start=${startOfMonth.toISOString()}&end=${endOfMonth.toISOString()}`;
+            if (filterSorumlu && filterSorumlu !== 'all') {
+                eUrl += `&userId=${filterSorumlu}`;
+            }
 
             const [gRes, eRes] = await Promise.all([
                 fetch(gUrl),
@@ -248,7 +255,7 @@ export default function GorevYonetimPage() {
             if (data.success) {
                 toast.success('Etkinlik eklendi');
                 setIsEtkinlikModalOpen(false);
-                setNewEtkinlik({ baslik: '', aciklama: '', tip: 'TOPLANTI', baslangic: '', bitis: '', personel_id: user?.id || '' });
+                setNewEtkinlik({ baslik: '', aciklama: '', tip: 'TOPLANTI', yer: 'KURUM_ICI', baslangic: '', bitis: '', personel_id: user?.id || '' });
                 fetchData();
             } else {
                 toast.error(data.error || 'Hata oluştu');
@@ -286,6 +293,40 @@ export default function GorevYonetimPage() {
         setSelectedDate(newDate);
     };
 
+    // Helper to generate Google Calendar Link
+    const getGoogleCalendarLink = (e: Etkinlik) => {
+        const formatDate = (d: string) => {
+            return new Date(d).toISOString().replace(/-|:|\.\d\d\d/g, "");
+        };
+        const start = formatDate(e.baslangic);
+        const end = formatDate(e.bitis);
+        const text = encodeURIComponent(e.baslik);
+        const details = encodeURIComponent(`${e.kod || ''}\n${e.aciklama || ''}\nTip: ${e.tip}`);
+        const location = encodeURIComponent(e.yer === 'KURUM_ICI' ? 'Kurum İçi' : 'Kurum Dışı');
+
+        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}&location=${location}`;
+    };
+
+    const handleCancelEtkinlik = async (etkinlikId: string) => {
+        try {
+            const res = await fetch(`/api/takvim/${etkinlikId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancel' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success('Etkinlik iptal edildi');
+                setSelectedEtkinlik(null);
+                fetchData();
+            } else {
+                toast.error(data.error || 'Hata oluştu');
+            }
+        } catch (_error) {
+            toast.error('Bağlantı hatası');
+        }
+    };
+
     // --- Sub-Components ---
 
     return (
@@ -314,7 +355,8 @@ export default function GorevYonetimPage() {
                             </TabsList>
                         </Tabs>
 
-                        {isManagement && (
+                        {/* Dynamic Button based on Active Tab */}
+                        {activeTab === 'list' && isManagement && (
                             <Button
                                 onClick={() => {
                                     setNewGorev({
@@ -337,6 +379,18 @@ export default function GorevYonetimPage() {
                             >
                                 <Plus className="w-4 h-4 mr-2" />
                                 YENİ GÖREV
+                            </Button>
+                        )}
+                        {activeTab === 'calendar' && (
+                            <Button
+                                onClick={() => {
+                                    setNewEtkinlik({ ...newEtkinlik, personel_id: user?.id || '' });
+                                    setIsEtkinlikModalOpen(true);
+                                }}
+                                className="h-9 px-4 bg-purple-600 text-white hover:bg-purple-700 rounded-lg font-bold text-xs shadow-lg shadow-purple-600/20 transition-all hover:scale-105 active:scale-95"
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                YENİ ETKİNLİK
                             </Button>
                         )}
                     </div>
@@ -403,21 +457,25 @@ export default function GorevYonetimPage() {
                                 </SelectContent>
                             </Select>
                         )}
-                        <div className="h-6 w-px bg-gray-200 mx-2" />
-                        <div className="flex items-center gap-1 bg-gray-100/50 p-1 rounded-lg">
-                            <button
-                                onClick={() => setSubTab('DEVAM_EDEN')}
-                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${subTab === 'DEVAM_EDEN' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                            >
-                                Devam Edenler ({gorevler.filter(g => ['DEVAM_EDEN', 'BEKLEYEN'].includes(g.durum)).length})
-                            </button>
-                            <button
-                                onClick={() => setSubTab('TAMAMLANDI')}
-                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${subTab === 'TAMAMLANDI' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                            >
-                                Tamamlananlar ({gorevler.filter(g => ['TAMAMLANDI', 'IPTAL'].includes(g.durum)).length})
-                            </button>
-                        </div>
+                        {activeTab === 'list' && (
+                            <>
+                                <div className="h-6 w-px bg-gray-200 mx-2" />
+                                <div className="flex items-center gap-1 bg-gray-100/50 p-1 rounded-lg">
+                                    <button
+                                        onClick={() => setSubTab('DEVAM_EDEN')}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${subTab === 'DEVAM_EDEN' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                                    >
+                                        Devam Edenler ({gorevler.filter(g => ['DEVAM_EDEN', 'BEKLEYEN'].includes(g.durum)).length})
+                                    </button>
+                                    <button
+                                        onClick={() => setSubTab('TAMAMLANDI')}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${subTab === 'TAMAMLANDI' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                                    >
+                                        Tamamlananlar ({gorevler.filter(g => ['TAMAMLANDI', 'IPTAL'].includes(g.durum)).length})
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -461,6 +519,7 @@ export default function GorevYonetimPage() {
                                                             <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider">
                                                                 {gorev.kategori}
                                                             </Badge>
+                                                            {gorev.kod && <span className="text-[9px] font-mono text-gray-400 self-center">{gorev.kod}</span>}
                                                             {isLate && <Badge className="bg-red-100 text-red-700 text-[9px] font-bold">GECİKTİ</Badge>}
                                                             {gorev.durum === 'IPTAL' && <Badge className="bg-gray-200 text-gray-700 text-[9px] font-bold">İPTAL EDİLDİ</Badge>}
                                                         </div>
@@ -504,16 +563,11 @@ export default function GorevYonetimPage() {
                 {activeTab === 'calendar' && (
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
                         <Card className="lg:col-span-3 h-full flex flex-col overflow-hidden shadow-sm border-0 bg-white/50 backdrop-blur-sm">
-                            <CardHeader className="py-4 px-6 border-b shrink-0 flex flex-row items-center justify-between">
+                            <CardHeader className="py-4 px-6 border-b shrink-0">
                                 <CardTitle className="text-lg font-black tracking-tight flex items-center gap-2">
                                     <CalendarIcon className="w-5 h-5 text-primary" />
                                     Takvim & Organizasyon
                                 </CardTitle>
-                                {isManagement && (
-                                    <Button size="sm" variant="outline" className="h-8 text-xs font-bold" onClick={() => setIsEtkinlikModalOpen(true)}>
-                                        <Plus className="w-3.5 h-3.5 mr-1.5" /> Etkinlik Ekle
-                                    </Button>
-                                )}
                             </CardHeader>
                             <CardContent className="p-0 flex-1 overflow-auto">
                                 <div className="p-6 h-full flex flex-col">
@@ -586,6 +640,18 @@ export default function GorevYonetimPage() {
                                                     }
                                                 });
 
+                                                // Find Events
+                                                const dayEvents = etkinlikler.filter(e => {
+                                                    const eStart = new Date(e.baslangic);
+                                                    const current = new Date(date);
+                                                    return eStart.getDate() === current.getDate() &&
+                                                        eStart.getMonth() === current.getMonth() &&
+                                                        eStart.getFullYear() === current.getFullYear();
+                                                });
+
+                                                const totalCount = dayTasks.length + dayEvents.length;
+                                                const displayLimit = 3;
+
                                                 days.push(
                                                     <div
                                                         key={d}
@@ -595,16 +661,28 @@ export default function GorevYonetimPage() {
                                                     >
                                                         <div className={`font-bold flex justify-between items-start ${isToday ? 'text-primary' : 'text-gray-700'}`}>
                                                             <span>{d}</span>
-                                                            {dayTasks.length > 0 && <span className="text-[9px] bg-gray-900 text-white px-1 rounded-full">{dayTasks.length}</span>}
+                                                            {totalCount > 0 && <span className="text-[9px] bg-gray-900 text-white px-1 rounded-full">{totalCount}</span>}
                                                         </div>
                                                         <div className="flex flex-col gap-1 overflow-hidden mt-1">
-                                                            {dayTasks.slice(0, 2).map(t => (
+                                                            {/* Render Events First (Purple) */}
+                                                            {dayEvents.slice(0, displayLimit).map(e => (
+                                                                <div
+                                                                    key={e.id}
+                                                                    onClick={(evt) => { evt.stopPropagation(); setSelectedEtkinlik(e); }}
+                                                                    className="h-1.5 rounded-full w-full bg-purple-500 cursor-pointer hover:bg-purple-600"
+                                                                    title={`Etkinlik: ${e.baslik}`}
+                                                                />
+                                                            ))}
+
+                                                            {/* Render Tasks (Colored by Priority) */}
+                                                            {dayTasks.slice(0, Math.max(0, displayLimit - dayEvents.length)).map(t => (
                                                                 <div key={t.id} className={`h-1.5 rounded-full w-full ${t.oncelik === 'ACIL' ? 'bg-red-500' :
                                                                     t.oncelik === 'YUKSEK' ? 'bg-orange-500' : 'bg-blue-500'
-                                                                    }`} title={t.baslik} />
+                                                                    }`} title={`Görev: ${t.baslik}`} />
                                                             ))}
-                                                            {dayTasks.length > 2 && (
-                                                                <div className="text-[8px] text-center text-gray-400">+{dayTasks.length - 2} daha</div>
+
+                                                            {totalCount > displayLimit && (
+                                                                <div className="text-[8px] text-center text-gray-400">+{totalCount - displayLimit} daha</div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -624,8 +702,52 @@ export default function GorevYonetimPage() {
                             </CardHeader>
                             <CardContent className="p-4 flex-1 overflow-y-auto">
                                 <div className="space-y-6">
+                                    {/* Events Section */}
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-bold text-purple-700 uppercase tracking-wider flex items-center gap-2 border-b border-purple-100 pb-1 mb-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                            Ajanda / Etkinlikler
+                                        </h4>
+                                        {etkinlikler
+                                            .filter(e => {
+                                                if (!selectedDate) return false;
+                                                const sDate = new Date(selectedDate);
+                                                const eStart = new Date(e.baslangic);
+                                                return eStart.getDate() === sDate.getDate() &&
+                                                    eStart.getMonth() === sDate.getMonth() &&
+                                                    eStart.getFullYear() === sDate.getFullYear();
+                                            })
+                                            .sort((a, b) => new Date(a.baslangic).getTime() - new Date(b.baslangic).getTime())
+                                            .map(e => (
+                                                <div
+                                                    key={e.id}
+                                                    onClick={() => setSelectedEtkinlik(e)}
+                                                    className="p-3 rounded-xl bg-purple-50/50 border border-purple-100 hover:border-purple-200 transition-all group cursor-pointer"
+                                                >
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h5 className="font-bold text-gray-900 text-xs line-clamp-1 group-hover:text-purple-700 transition-colors">{e.baslik}</h5>
+                                                        <span className="text-[10px] font-mono font-bold text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded">
+                                                            {new Date(e.baslangic).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="text-[9px] h-4 px-1 border-purple-200 text-purple-400 bg-white">{e.tip}</Badge>
+                                                        {e.aciklama && <p className="text-[10px] text-gray-400 truncate flex-1">{e.aciklama}</p>}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        }
+                                        {etkinlikler.filter(e => selectedDate && new Date(e.baslangic).toDateString() === selectedDate.toDateString()).length === 0 && (
+                                            <div className="text-center py-2 text-[10px] text-gray-300 italic border border-dashed rounded-lg">Etkinlik bulunmuyor</div>
+                                        )}
+                                    </div>
+
+                                    {/* Tasks Section */}
                                     <div className="space-y-3">
-                                        <h4 className="text-xs font-bold text-gray-900 border-b pb-1">Bekleyen İşler</h4>
+                                        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2 border-b pb-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                            Görevler & İşler
+                                        </h4>
                                         {gorevler
                                             .filter(g => ['DEVAM_EDEN', 'BEKLEYEN'].includes(g.durum))
                                             .sort((a, b) => {
@@ -634,12 +756,13 @@ export default function GorevYonetimPage() {
                                                 return new Date(a.bitis_tarihi).getTime() - new Date(b.bitis_tarihi).getTime();
                                             })
                                             .map(g => (
-                                                <div key={g.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100 text-left">
-                                                    <div className={`w-2 h-2 rounded-full shrink-0 ${g.oncelik === 'ACIL' ? 'bg-red-500' : 'bg-blue-500'}`} />
-                                                    <div className="min-w-0">
+                                                <div key={g.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-white hover:shadow-sm transition-all cursor-pointer" onClick={() => setSelectedGorev(g)}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${g.oncelik === 'ACIL' ? 'bg-red-500' : 'bg-blue-500'}`} />
+                                                    <div className="min-w-0 flex-1">
                                                         <div className="text-xs font-bold text-gray-900 truncate">{g.baslik}</div>
-                                                        <div className="text-[10px] text-gray-500">
-                                                            Bitiş: {g.bitis_tarihi ? new Date(g.bitis_tarihi).toLocaleDateString('tr-TR') : 'Süresiz'}
+                                                        <div className="text-[10px] text-gray-500 flex justify-between">
+                                                            <span>{g.bitis_tarihi ? new Date(g.bitis_tarihi).toLocaleDateString('tr-TR') : 'Süresiz'}</span>
+                                                            <span className="uppercase text-[9px] font-bold opacity-60">{g.kategori}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -799,65 +922,161 @@ export default function GorevYonetimPage() {
             </Dialog>
 
             <Dialog open={isEtkinlikModalOpen} onOpenChange={setIsEtkinlikModalOpen}>
-                <DialogTrigger asChild>
-                    <Button variant="outline" className="shadow-lg border-2 h-12 rounded-xl font-bold px-6">
-                        <CalendarIcon className="mr-2 w-5 h-5" /> Etkinlik Ekle
-                    </Button>
-                </DialogTrigger>
                 <DialogContent>
                     <form onSubmit={handleEtkinlikSubmit}>
                         <DialogHeader>
-                            <DialogTitle>Yeni Takvim Etkinliği</DialogTitle>
-                            <DialogDescription>Toplantı, eğitim veya izin girişi yapın.</DialogDescription>
+                            <DialogTitle>Yeni Etkinlik Oluştur</DialogTitle>
+                            <DialogDescription>Kişisel takviminize yeni bir etkinlik ekleyin.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-1">
-                                <Label>Etkinlik Adı</Label>
-                                <Input required value={newEtkinlik.baslik} onChange={(e) => setNewEtkinlik({ ...newEtkinlik, baslik: e.target.value })} />
+                                <Label>Etkinlik Başlığı</Label>
+                                <Input
+                                    required
+                                    minLength={5}
+                                    maxLength={50}
+                                    value={newEtkinlik.baslik}
+                                    onChange={(e) => setNewEtkinlik({ ...newEtkinlik, baslik: e.target.value })}
+                                    placeholder="En az 5, en fazla 50 karakter"
+                                />
                             </div>
-                            <div className="space-y-1">
-                                <Label>Tip</Label>
-                                <Select value={newEtkinlik.tip} onValueChange={(val) => setNewEtkinlik({ ...newEtkinlik, tip: val })}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="TOPLANTI">Toplantı</SelectItem>
-                                        <SelectItem value="EGITIM">Eğitim</SelectItem>
-                                        <SelectItem value="DENETIM">Denetim</SelectItem>
-                                        <SelectItem value="IZIN">İzin</SelectItem>
-                                        <SelectItem value="DIGER">Diğer</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {isManagement && (
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <Label>İlgili Personel</Label>
-                                    <Select value={newEtkinlik.personel_id} onValueChange={(val) => setNewEtkinlik({ ...newEtkinlik, personel_id: val })}>
+                                    <Label>Etkinlik Tipi</Label>
+                                    <Select value={newEtkinlik.tip} onValueChange={(val) => setNewEtkinlik({ ...newEtkinlik, tip: val })}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            {personeller.map(p => <SelectItem key={p.id} value={p.id}>{p.ad} {p.soyad}</SelectItem>)}
+                                            <SelectItem value="TOPLANTI">Toplantı</SelectItem>
+                                            <SelectItem value="EGITIM">Eğitim</SelectItem>
+                                            <SelectItem value="ZIYARET">Ziyaret</SelectItem>
+                                            <SelectItem value="STAND">Stand</SelectItem>
+                                            <SelectItem value="TARAMA">Tarama</SelectItem>
+                                            <SelectItem value="DENETIM">Denetim</SelectItem>
+                                            <SelectItem value="IZIN">İzin</SelectItem>
+                                            <SelectItem value="DIGER">Diğer</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
-                            )}
+                                <div className="space-y-1">
+                                    <Label>Yer</Label>
+                                    <div className="flex gap-4 pt-2">
+                                        <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="yer"
+                                                checked={newEtkinlik.yer === 'KURUM_ICI'}
+                                                onChange={() => setNewEtkinlik({ ...newEtkinlik, yer: 'KURUM_ICI' })}
+                                            />
+                                            Kurum İçi
+                                        </label>
+                                        <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="yer"
+                                                checked={newEtkinlik.yer === 'KURUM_DISI'}
+                                                onChange={() => setNewEtkinlik({ ...newEtkinlik, yer: 'KURUM_DISI' })}
+                                            />
+                                            Kurum Dışı
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <Label>Başlangıç</Label>
-                                    <Input type="datetime-local" required value={newEtkinlik.baslangic} onChange={(e) => setNewEtkinlik({ ...newEtkinlik, baslangic: e.target.value })} />
+                                    <Input
+                                        type="datetime-local"
+                                        required
+                                        min={new Date().toISOString().slice(0, 16)}
+                                        value={newEtkinlik.baslangic}
+                                        onChange={(e) => setNewEtkinlik({ ...newEtkinlik, baslangic: e.target.value })}
+                                    />
                                 </div>
                                 <div className="space-y-1">
                                     <Label>Bitiş</Label>
-                                    <Input type="datetime-local" required value={newEtkinlik.bitis} onChange={(e) => setNewEtkinlik({ ...newEtkinlik, bitis: e.target.value })} />
+                                    <Input
+                                        type="datetime-local"
+                                        required
+                                        min={newEtkinlik.baslangic || new Date().toISOString().slice(0, 16)}
+                                        value={newEtkinlik.bitis}
+                                        onChange={(e) => setNewEtkinlik({ ...newEtkinlik, bitis: e.target.value })}
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <Label>Notlar</Label>
-                                <Textarea value={newEtkinlik.aciklama} onChange={(e) => setNewEtkinlik({ ...newEtkinlik, aciklama: e.target.value })} />
+                                <Label>Notlar (Opsiyonel)</Label>
+                                <Textarea
+                                    maxLength={1000}
+                                    value={newEtkinlik.aciklama}
+                                    onChange={(e) => setNewEtkinlik({ ...newEtkinlik, aciklama: e.target.value })}
+                                    placeholder="En fazla 1000 karakter"
+                                />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="submit">Takvime Ekle</Button>
+                            <Button type="submit">Oluştur</Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Event Detail Modal */}
+            <Dialog open={!!selectedEtkinlik} onOpenChange={(open) => !open && setSelectedEtkinlik(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex justify-between items-center">
+                            <span>Etkinlik Detayı</span>
+                            {selectedEtkinlik?.kod && <Badge variant="outline" className="font-mono text-xs">{selectedEtkinlik.kod}</Badge>}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {selectedEtkinlik && (
+                        <div className="space-y-4 py-4">
+                            <h3 className="text-xl font-bold">{selectedEtkinlik.baslik}</h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div className="font-semibold text-gray-500 text-xs mb-1">Zaman</div>
+                                    <div className="text-sm">{new Date(selectedEtkinlik.baslangic).toLocaleString('tr-TR')}</div>
+                                    <div className="text-gray-400 text-xs my-1">↓</div>
+                                    <div className="text-sm">{new Date(selectedEtkinlik.bitis).toLocaleString('tr-TR')}</div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div>
+                                        <div className="font-semibold text-gray-500 text-xs">Tip</div>
+                                        <Badge className="mt-1">{selectedEtkinlik.tip}</Badge>
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-gray-500 text-xs">Yer</div>
+                                        <div className="text-sm mt-1">{selectedEtkinlik.yer === 'KURUM_ICI' ? 'Kurum İçi' : 'Kurum Dışı'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {selectedEtkinlik.aciklama && (
+                                <div className="bg-gray-50 p-3 rounded-lg text-sm border">
+                                    <div className="font-semibold text-gray-500 text-xs mb-1">Notlar</div>
+                                    {selectedEtkinlik.aciklama}
+                                </div>
+                            )}
+
+                            <div className="flex gap-2 pt-4 border-t">
+                                <Button className="flex-1 bg-white text-gray-900 border hover:bg-gray-50" asChild>
+                                    <a href={getGoogleCalendarLink(selectedEtkinlik)} target="_blank" rel="noopener noreferrer">
+                                        <CalendarIcon className="w-4 h-4 mr-2" />
+                                        Google Takvime Ekle
+                                    </a>
+                                </Button>
+                                {selectedEtkinlik.personel_id === user?.id && (
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => handleCancelEtkinlik(selectedEtkinlik.id)}
+                                        className="flex-1"
+                                    >
+                                        <XCircle className="w-4 h-4 mr-2" />
+                                        Etkinliği İptal Et
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
 

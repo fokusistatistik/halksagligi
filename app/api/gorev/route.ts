@@ -92,8 +92,35 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Görev atama yetkiniz yok' }, { status: 403 });
         }
 
+        // Generate Kod (GÖREV-YY-000001)
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        const prefix = `GÖREV-${currentYear}-`;
+
+        const lastGorev = await prisma.gorev.findFirst({
+            where: {
+                kod: { startsWith: prefix }
+            },
+            orderBy: {
+                kod: 'desc'
+            },
+            select: { kod: true }
+        });
+
+        let nextSeq = 1;
+        if (lastGorev && lastGorev.kod) {
+            const parts = lastGorev.kod.split('-');
+            const lastSeqStr = parts[parts.length - 1];
+            const lastSeq = parseInt(lastSeqStr);
+            if (!isNaN(lastSeq)) {
+                nextSeq = lastSeq + 1;
+            }
+        }
+
+        const newKod = `${prefix}${nextSeq.toString().padStart(6, '0')}`;
+
         const gorev = await prisma.gorev.create({
             data: {
+                kod: newKod,
                 baslik: body.baslik,
                 aciklama: body.aciklama,
                 oncelik: body.oncelik || 'ORTA',
@@ -129,8 +156,8 @@ export async function POST(request: Request) {
                 personel_email: user.email,
                 islem: 'gorev.olustur',
                 tablo: 'gorevler',
-                kayit_id: gorev.id,
-                aciklama: `${gorev.baslik} başlıklı görev oluşturuldu.`
+                kayit_id: gorev.id.toString(), // Convert to string as schema demands
+                aciklama: `${newKod} - ${gorev.baslik} başlıklı görev oluşturuldu.`
             }
         });
 
@@ -139,7 +166,7 @@ export async function POST(request: Request) {
             data: {
                 gorev_id: gorev.id,
                 personel_id: user.id,
-                mesaj: `Görev oluşturuldu. ${body.notlar ? `Not: ${body.notlar}` : ''}`,
+                mesaj: `Görev oluşturuldu. Kod: ${newKod}. ${body.notlar ? `Not: ${body.notlar}` : ''}`,
             }
         });
 

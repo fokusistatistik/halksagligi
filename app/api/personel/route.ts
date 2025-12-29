@@ -14,9 +14,9 @@ const personelSchema = z.object({
   email: z.string().email('Geçerli bir email adresi giriniz'),
   password: z.string().min(8, 'Şifre en az 8 karakter olmalıdır').optional(),
   telefon: z.string().min(10, 'Telefon numarası geçersiz'),
-  rol_id: z.string().uuid('Geçerli bir rol seçiniz'),
-  birim_id: z.string().uuid('Geçerli bir birim seçiniz'),
-  yonetici_id: z.string().uuid().optional().nullable(),
+  rol_id: z.union([z.string(), z.number()]).transform(val => Number(val)),
+  birim_id: z.union([z.string(), z.number()]).optional().nullable().transform(val => val ? Number(val) : null),
+  yonetici_id: z.union([z.string(), z.number()]).optional().nullable().transform(val => val ? Number(val) : null),
   unvan: z.string().max(100).optional().nullable(),
   sicil_no: z.string().max(50).optional().nullable(),
   dogum_tarihi: z.string().optional().nullable(),
@@ -50,9 +50,9 @@ export async function GET(request: NextRequest) {
 
     // Query parameters
     const { searchParams } = new URL(request.url)
-    const birimId = searchParams.get('birim_id')
-    const rolId = searchParams.get('rol_id')
-    const yoneticiId = searchParams.get('yonetici_id')
+    const birimId = searchParams.get('birim_id') ? parseInt(searchParams.get('birim_id')!) : undefined
+    const rolId = searchParams.get('rol_id') ? parseInt(searchParams.get('rol_id')!) : undefined
+    const yoneticiId = searchParams.get('yonetici_id') ? parseInt(searchParams.get('yonetici_id')!) : undefined
     const aktif = searchParams.get('aktif')
     const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1')
@@ -61,9 +61,9 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: {
-      birim_id?: string;
-      rol_id?: string;
-      yonetici_id?: string;
+      birim_id?: number;
+      rol_id?: number;
+      yonetici_id?: number;
       aktif?: boolean;
       OR?: any[];
     } = {}
@@ -204,6 +204,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // GÜVENLİK KONTROLÜ: Rol Seviyesi ve Birim Atama
+    if (user.rol.kod !== 'ADMIN' && user.rol.kod !== 'BASKAN') {
+      // 1. Sadece kendi birimine personel ekleyebilir
+      if (validatedData.birim_id !== user.birim_id) {
+        return NextResponse.json(
+          { error: 'Sadece kendi biriminize personel ekleyebilirsiniz' },
+          { status: 403 }
+        )
+      }
+
+      // 2. Kendinden yüksek veya eşit seviyede rol atayamaz
+      const atanacakRol = await prisma.rol.findUnique({ where: { id: validatedData.rol_id } })
+      if (!atanacakRol) {
+        return NextResponse.json({ error: 'Geçersiz rol' }, { status: 400 })
+      }
+
+      if (atanacakRol.seviye >= user.rol.seviye) {
+        return NextResponse.json(
+          { error: 'Kendi yetki seviyenizden yüksek veya eşit bir rol atayamazsınız' },
+          { status: 403 }
+        )
+      }
+    }
+
     // Şifreyi hashle
     const password = validatedData.password || `temp${Date.now()}`
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -233,7 +257,7 @@ export async function POST(request: NextRequest) {
       personel_email: user.email,
       islem: 'personel.ekle',
       tablo: 'personel',
-      kayit_id: yeniPersonel.id,
+      kayit_id: yeniPersonel.id.toString(),
       aciklama: `Yeni personel eklendi: ${yeniPersonel.ad} ${yeniPersonel.soyad}`,
     })
 

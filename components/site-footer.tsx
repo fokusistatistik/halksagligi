@@ -34,6 +34,13 @@ export default function SiteFooter() {
                         </div>
                     </div>
 
+                    {/* Sistem Bilgileri (Orta) */}
+                    <div className="flex flex-col items-center justify-center gap-1 text-[10px] md:text-xs text-gray-400 text-center order-last md:order-none py-2 md:py-0 border-t md:border-t-0 border-gray-100 w-full md:w-auto mt-2 md:mt-0">
+                        <div>Sistem Durumu: <span className="text-green-600 font-semibold">Aktif</span></div>
+                        <div>Son Güncelleme: 24 Aralık 2025</div>
+                        <Link href="/gizlilik" className="hover:text-gray-600 transition-colors">Gizlilik Politikası</Link>
+                    </div>
+
                     {/* FOKUS Tarafı */}
                     <div className="flex items-center gap-3 md:gap-4">
                         <div className="text-right">
@@ -56,19 +63,6 @@ export default function SiteFooter() {
                             alt="FOKUS"
                             className="h-8 md:h-10 w-8 md:w-10 opacity-80"
                         />
-                    </div>
-                </div>
-
-                {/* Alt Bilgi Çubuğu */}
-                <div className="mt-6 pt-4 border-t border-gray-100">
-                    <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-xs text-gray-400">
-                        <span>Sistem Durumu: <span className="text-green-600 font-semibold">Aktif</span></span>
-                        <span className="hidden md:inline">•</span>
-                        <span>Son Güncelleme: 24 Aralık 2025</span>
-                        <span className="hidden md:inline">•</span>
-                        <Link href="/gizlilik" className="hover:text-gray-600 transition-colors">
-                            Gizlilik Politikası
-                        </Link>
                     </div>
                 </div>
             </div>

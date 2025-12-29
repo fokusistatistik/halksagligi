@@ -43,9 +43,20 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const id = parseInt(params.id)
+    if (isNaN(id)) {
+      return NextResponse.json({ error: 'Geçersiz ID' }, { status: 400 })
+    }
+
     const body = await request.json()
+
+    // Ensure numeric fields are numbers
+    if (body.ust_birim_id) {
+      body.ust_birim_id = parseInt(body.ust_birim_id)
+    }
+
     const birim = await prisma.birim.update({
-      where: { id: params.id },
+      where: { id },
       data: body
     })
 
@@ -65,9 +76,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const id = parseInt(params.id)
+    if (isNaN(id)) {
+      return NextResponse.json({ error: 'Geçersiz ID' }, { status: 400 })
+    }
+
     // Check if birim has personnel
     const personelCount = await prisma.personel.count({
-      where: { birim_id: params.id }
+      where: { birim_id: id }
     })
 
     if (personelCount > 0) {
@@ -78,7 +94,7 @@ export async function DELETE(
     }
 
     await prisma.birim.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ success: true, message: 'Birim silindi' })

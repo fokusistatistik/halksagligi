@@ -94,6 +94,20 @@ export default function YetkilerPage() {
       return;
     }
 
+    // Misafir Rolü Güvenlik Kısıtlaması
+    if (formData.kod === 'MISAFIR') {
+      const dashboardYetkisi = tumYetkiler.find(y =>
+        y.kod === 'dashboard.goruntule' ||
+        y.kod === 'dashboard.view' ||
+        y.kod.includes('dashboard')
+      );
+
+      if (dashboardYetkisi && formData.yetkiIds.includes(dashboardYetkisi.id as any)) {
+        toast.error('Güvenlik Uyarısı: Misafir rolüne Dashboard görüntüleme yetkisi verilemez!');
+        return;
+      }
+    }
+
     try {
       const url = editingRol ? `/api/rol/${editingRol.id}` : '/api/rol';
       const method = editingRol ? 'PUT' : 'POST';

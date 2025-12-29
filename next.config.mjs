@@ -117,16 +117,14 @@ const nextConfig = {
 
   // TypeScript configuration
   typescript: {
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors. (Not recommended for production)
-    ignoreBuildErrors: true,
+    // Production builds should fail if there are type errors
+    ignoreBuildErrors: false,
   },
 
   // ESLint configuration
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors. (Not recommended for production)
-    ignoreDuringBuilds: true,
+    // Production builds should fail if there are lint errors
+    ignoreDuringBuilds: false,
   },
 
   // Add generateBuildId for cache busting

@@ -21,13 +21,17 @@ interface Kullanici {
     ad: string;
     kod: string;
   };
-  birim: {
+  birim?: {
     id: string;
     ad: string;
     kod: string;
-  };
+  } | null;
   ilk_giris: boolean;
   created_at: string;
+  sicil_no?: string;
+  unvan?: string;
+  dogum_tarihi?: string;
+  ise_baslama_tarihi?: string;
 }
 
 interface Rol {
@@ -50,6 +54,7 @@ export default function KullanicilarPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingKullanici, setEditingKullanici] = useState<Kullanici | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showUnassigned, setShowUnassigned] = useState(false);
 
   const [formData, setFormData] = useState({
     tc_kimlik_no: '',
@@ -60,7 +65,11 @@ export default function KullanicilarPage() {
     rol_id: '',
     birim_id: '',
     aktif: true,
-    password: '' // Sadece yeni kullanıcı için
+    password: '',
+    sicil_no: '',
+    unvan: '',
+    dogum_tarihi: '',
+    ise_baslama_tarihi: ''
   });
 
   useEffect(() => {
@@ -180,6 +189,14 @@ export default function KullanicilarPage() {
   };
 
   const toggleAktif = async (kullanici: Kullanici) => {
+    const action = !kullanici.aktif ? 'aktif' : 'pasif';
+    const confirmed = await confirmDialog.danger(
+      `Bu kullanıcıyı ${action} yapmak istediğinizden emin misiniz?`,
+      `Kullanıcıyı ${action.charAt(0).toUpperCase() + action.slice(1)} Et`
+    );
+
+    if (!confirmed) return;
+
     try {
       const res = await fetch(`/api/personel/${kullanici.id}`, {
         method: 'PUT',
@@ -188,8 +205,11 @@ export default function KullanicilarPage() {
       });
 
       if (res.ok) {
-        toast.success(`Kullanıcı ${!kullanici.aktif ? 'aktif' : 'pasif'} edildi`);
+        toast.success(`Kullanıcı ${action} edildi`);
         loadData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'İşlem başarısız');
       }
     } catch (_err) {
       toast.error('İşlem başarısız');
@@ -204,10 +224,14 @@ export default function KullanicilarPage() {
       soyad: kullanici.soyad,
       email: kullanici.email,
       telefon: kullanici.telefon ? formatPhoneNumber(kullanici.telefon) : '',
-      rol_id: kullanici.rol.id,
-      birim_id: kullanici.birim.id,
+      rol_id: kullanici.rol.id.toString(),
+      birim_id: kullanici.birim ? kullanici.birim.id.toString() : '',
       aktif: kullanici.aktif,
-      password: ''
+      password: '',
+      sicil_no: kullanici.sicil_no || '',
+      unvan: kullanici.unvan || '',
+      dogum_tarihi: kullanici.dogum_tarihi ? new Date(kullanici.dogum_tarihi).toISOString().split('T')[0] : '',
+      ise_baslama_tarihi: kullanici.ise_baslama_tarihi ? new Date(kullanici.ise_baslama_tarihi).toISOString().split('T')[0] : ''
     });
     setShowModal(true);
   };
@@ -222,17 +246,26 @@ export default function KullanicilarPage() {
       rol_id: '',
       birim_id: '',
       aktif: true,
-      password: ''
+      password: '',
+      sicil_no: '',
+      unvan: '',
+      dogum_tarihi: '',
+      ise_baslama_tarihi: ''
     });
     setEditingKullanici(null);
   };
 
-  const filteredKullanicilar = kullanicilar.filter(k =>
-    k.ad.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    k.soyad.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    k.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    k.tc_kimlik_no.includes(searchTerm)
-  );
+  const filteredKullanicilar = kullanicilar.filter(k => {
+    const matchesSearch = k.ad.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      k.soyad.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      k.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      k.tc_kimlik_no.includes(searchTerm);
+
+    if (showUnassigned) {
+      return matchesSearch && !k.birim;
+    }
+    return matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -271,6 +304,16 @@ export default function KullanicilarPage() {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary w-full md:w-64"
                 />
               </div>
+
+              <button
+                onClick={() => setShowUnassigned(!showUnassigned)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border ${showUnassigned
+                  ? 'bg-orange-100 text-orange-800 border-orange-200'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                {showUnassigned ? 'Tümünü Göster' : 'Birim Atanmamışlar'}
+              </button>
 
               <button
                 onClick={() => {
@@ -343,8 +386,16 @@ export default function KullanicilarPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        <div>{kullanici.birim.ad}</div>
-                        <div className="text-xs text-gray-500">{kullanici.birim.kod}</div>
+                        {kullanici.birim ? (
+                          <>
+                            <div>{kullanici.birim.ad}</div>
+                            <div className="text-xs text-gray-500">{kullanici.birim.kod}</div>
+                          </>
+                        ) : (
+                          <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium border border-orange-200">
+                            Atanmamış
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {kullanici.aktif ? (
@@ -393,190 +444,251 @@ export default function KullanicilarPage() {
               </table>
             </div>
           </div>
-        )}
-      </div>
+        )
+        }
+      </div >
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingKullanici ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı Oluştur'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    TC Kimlik No *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tc_kimlik_no}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      setFormData({ ...formData, tc_kimlik_no: value });
-                    }}
-                    required
-                    maxLength={11}
-                    autoComplete="off"
-                    placeholder="11 haneli TC"
-                    pattern="\d{11}"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    autoComplete="off"
-                    placeholder="ornek@saglik.gov.tr"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ad *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.ad}
-                    onChange={(e) => setFormData({ ...formData, ad: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Soyad *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.soyad}
-                    onChange={(e) => setFormData({ ...formData, soyad: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Telefon
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.telefon}
-                    onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
-                    placeholder="(5XX) XXX XX XX"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Başında 0 olmadan (örn: 532 123 45 67) veya formatlı girebilirsiniz.</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Rol *
-                  </label>
-                  <select
-                    value={formData.rol_id}
-                    onChange={(e) => setFormData({ ...formData, rol_id: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">Rol seçiniz</option>
-                    {roller.map(rol => (
-                      <option key={rol.id} value={rol.id}>{rol.ad}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Birim *
-                  </label>
-                  <select
-                    value={formData.birim_id}
-                    onChange={(e) => setFormData({ ...formData, birim_id: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">Birim seçiniz</option>
-                    {birimler.map(birim => (
-                      <option key={birim.id} value={birim.id}>{birim.ad}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {!editingKullanici && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Geçici Şifre *
-                    </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required={!editingKullanici}
-                      placeholder="Geçici şifre"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                )}
-
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.aktif}
-                      onChange={(e) => setFormData({ ...formData, aktif: e.target.checked })}
-                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Aktif</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t">
+      {
+        showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {editingKullanici ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı Oluştur'}
+                </h2>
                 <button
-                  type="submit"
-                  className="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:opacity-90"
-                >
-                  {editingKullanici ? 'Güncelle' : 'Oluştur'}
-                </button>
-                <button
-                  type="button"
                   onClick={() => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  İptal
+                  <X className="w-6 h-6" />
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      TC Kimlik No *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.tc_kimlik_no}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        setFormData({ ...formData, tc_kimlik_no: value });
+                      }}
+                      required
+                      maxLength={11}
+                      autoComplete="off"
+                      placeholder="11 haneli TC"
+                      pattern="\d{11}"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      autoComplete="off"
+                      placeholder="ornek@saglik.gov.tr"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ad *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.ad}
+                      onChange={(e) => setFormData({ ...formData, ad: e.target.value })}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Soyad *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.soyad}
+                      onChange={(e) => setFormData({ ...formData, soyad: e.target.value })}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Telefon
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.telefon}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormData({ ...formData, telefon: val });
+                      }}
+                      placeholder="5324567890"
+                      maxLength={10}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Başında 0 olmadan 10 hane giriniz (Örn: 5324567890).</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Rol *
+                    </label>
+                    <select
+                      value={formData.rol_id}
+                      onChange={(e) => setFormData({ ...formData, rol_id: e.target.value })}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Rol seçiniz</option>
+                      {roller.map(rol => (
+                        <option key={rol.id} value={rol.id}>{rol.ad}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Birim
+                    </label>
+                    <select
+                      value={formData.birim_id}
+                      onChange={(e) => setFormData({ ...formData, birim_id: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Birim atanmamış</option>
+                      {birimler.map(birim => (
+                        <option key={birim.id} value={birim.id}>{birim.ad}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2 border-t pt-4 mt-2">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <span className="p-1 bg-blue-50 text-blue-600 rounded">ℹ️</span>
+                      Özlük Bilgileri (İsteğe Bağlı)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Sicil No
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.sicil_no}
+                          onChange={(e) => setFormData({ ...formData, sicil_no: e.target.value })}
+                          placeholder="Sicil numarası"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Ünvan
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.unvan}
+                          onChange={(e) => setFormData({ ...formData, unvan: e.target.value })}
+                          placeholder="Örn: Ebe, Hemşire"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Doğum Tarihi
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.dogum_tarihi}
+                          onChange={(e) => setFormData({ ...formData, dogum_tarihi: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          İşe Başlama Tarihi
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.ise_baslama_tarihi}
+                          onChange={(e) => setFormData({ ...formData, ise_baslama_tarihi: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {!editingKullanici && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Geçici Şifre *
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required={!editingKullanici}
+                        placeholder="Geçici şifre"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  )}
+
+                  <div className="md:col-span-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.aktif}
+                        onChange={(e) => setFormData({ ...formData, aktif: e.target.checked })}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Aktif</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:opacity-90"
+                  >
+                    {editingKullanici ? 'Güncelle' : 'Oluştur'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }}
+                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    İptal
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

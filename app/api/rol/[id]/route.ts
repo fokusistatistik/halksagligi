@@ -12,8 +12,13 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const rolId = parseInt(params.id);
+    if (isNaN(rolId)) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    }
+
     const rol = await prisma.rol.findUnique({
-      where: { id: params.id },
+      where: { id: rolId },
       include: {
         yetkiler: {
           include: {
@@ -47,34 +52,39 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const rolId = parseInt(params.id);
+    if (isNaN(rolId)) {
+      return NextResponse.json({ error: 'Geçersiz Rol ID' }, { status: 400 });
+    }
+
     const body = await request.json();
     const { yetkiIds, ...rolData } = body;
 
+    // Remove ID from data if present to avoid update error
+    if ('id' in rolData) delete rolData.id;
+    if ('yetkiler' in rolData) delete rolData.yetkiler;
+    if ('_count' in rolData) delete rolData._count;
+
     // Rol bilgilerini güncelle
     await prisma.rol.update({
-      where: { id: params.id },
+      where: { id: rolId },
       data: rolData,
-      include: {
-        yetkiler: {
-          include: {
-            yetki: true
-          }
-        }
-      }
     });
 
     // Eğer yetki listesi gönderildiyse, yetkileri güncelle
-    if (yetkiIds !== undefined) {
+    if (yetkiIds !== undefined && Array.isArray(yetkiIds)) {
       // Mevcut yetkileri sil
       await prisma.rolYetki.deleteMany({
-        where: { rol_id: params.id }
+        where: { rol_id: rolId }
       });
 
       // Yeni yetkileri ekle
-      if (yetkiIds.length > 0) {
+      const validYetkiIds = yetkiIds.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+
+      if (validYetkiIds.length > 0) {
         await prisma.rolYetki.createMany({
-          data: yetkiIds.map((yetkiId: string) => ({
-            rol_id: params.id,
+          data: validYetkiIds.map((yetkiId: number) => ({
+            rol_id: rolId,
             yetki_id: yetkiId
           }))
         });
@@ -83,7 +93,7 @@ export async function PUT(
 
     // Güncellenmiş rolü döndür
     const updatedRol = await prisma.rol.findUnique({
-      where: { id: params.id },
+      where: { id: rolId },
       include: {
         yetkiler: {
           include: {
@@ -113,9 +123,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const rolId = parseInt(params.id);
+    if (isNaN(rolId)) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    }
+
     // Rol kullanımda mı kontrol et
     const personelCount = await prisma.personel.count({
-      where: { rol_id: params.id }
+      where: { rol_id: rolId }
     });
 
     if (personelCount > 0) {
@@ -126,7 +141,7 @@ export async function DELETE(
     }
 
     await prisma.rol.delete({
-      where: { id: params.id }
+      where: { id: rolId }
     });
 
     return NextResponse.json({ success: true, message: 'Rol silindi' });

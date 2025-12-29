@@ -301,6 +301,8 @@ model Gorev {
   
   baslangic_tarihi DateTime?
   bitis_tarihi     DateTime?
+  is_suresiz       Boolean   @default(false)
+  
   // TAMAMLANMA BİLGİLERİ
   tamamlayan_id     String?
   tamamlayan        Personel? @relation("TamamlayanPersonel", fields: [tamamlayan_id], references: [id])

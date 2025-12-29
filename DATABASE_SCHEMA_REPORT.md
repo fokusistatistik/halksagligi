@@ -1,7 +1,7 @@
 # Database Schema Raporu - Halk Sağlığı Yönetim Sistemi
 
-**Versiyon:** 2.1 (SQLite + Görev/Takvim Modülleri)
-**Tarih:** 2025-12-26
+**Versiyon:** 2.2 (v1.1.0 Updates)
+**Tarih:** 2025-12-29
 **Sistem:** Kocaeli İSM Halk Sağlığı Yönetim Platformu (SAHA)
 
 ---
@@ -500,13 +500,17 @@ model Gorev {
 
   baslik      String
   aciklama    String?
-  durum       String   @default("BEKLEYEN") // Enum: GorevDurum
+  durum       String   @default("DEVAM_EDEN") // Enum: GorevDurum
   oncelik     String   @default("ORTA")     // Enum: GorevOncelik
   kategori    String?  // Enum: GorevKategori
   
   baslangic_tarihi DateTime?
   bitis_tarihi     DateTime?
+  is_suresiz       Boolean   @default(false) // Bitiş tarihi olmayan işler
+  
   tamamlanma_tarihi DateTime?
+  tamamlayan_id     String?
+  tamamlanma_notu   String?
 
   // İLİŞKİLER
   olusturan_id String
@@ -515,11 +519,18 @@ model Gorev {
   sorumlu_id   String
   sorumlu      Personel @relation("SorumluGorev", fields: [sorumlu_id], references: [id])
 
+  destek_verenler Personel[] @relation("DestekVerenGorev") // Many-to-many
+
   birim_id     String?
   birim        Birim?   @relation(fields: [birim_id], references: [id])
 
   // Geri bildirimler ve görseller
   guncellemeler GorevGuncelleme[]
+  
+  // Görsel alanları (URL)
+  gorsel_1     String?
+  gorsel_2     String?
+  gorsel_3     String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -532,9 +543,10 @@ model Gorev {
 ```
 
 **Önemli Alanlar:**
-- `durum`: Görevin anlık durumu
-- `oncelik`: Görev aciliyet seviyesi
-- `sorumlu_id`: Görevi yapacak personel
+- `durum`: Görevin anlık durumu (Varsayılan: DEVAM_EDEN)
+- `is_suresiz`: Sürekli devam eden, bitiş tarihi olmayan rutin işler için
+- `sorumlu_id`: Görevi yapacak asıl personel
+- `destek_verenler`: Göreve yardımcı olacak diğer personeller (Çoklu seçim)
 - `olusturan_id`: Görevi veren yönetici/personel
 
 ---
@@ -635,7 +647,8 @@ type OnayDurumu = 'BEKLEMEDE' | 'ONAYLANDI' | 'REDDEDILDI';
 
 ### Görev Durumları
 ```typescript
-type GorevDurum = 'BEKLEYEN' | 'DEVAM_EDEN' | 'TAMAMLANDI' | 'IPTAL';
+type GorevDurum = 'DEVAM_EDEN' | 'TAMAMLANDI' | 'IPTAL';
+// Not: BEKLEYEN durumu v2.1 itibariyle kaldırılmış ve DEVAM_EDEN ile birleştirilmiştir.
 ```
 
 ### Görev Öncelikleri

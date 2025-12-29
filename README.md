@@ -337,7 +337,27 @@ halksagligi/
 
 ## 📝 Changelog
 
-### v1.0.0-beta (2025-12-26) ✅ GÜNCEL
+### v1.1.0 (2025-12-29) ✅ GÜNCEL
+
+#### ✅ Yeni Özellikler
+- **Gelişmiş Takvim Görünümü:**
+  - Aylık ızgara (Grid) görünümü eklendi
+  - Görevlerin takvim üzerinde bar şeklinde görselleştirilmesi
+  - "Süresiz" görevlerin sürekli devam eden iş olarak gösterilmesi
+  - Günlük akış ve özet yan panel
+
+- **Görev Yönetimi İyileştirmeleri:**
+  - **Süresiz İşler:** Bitiş tarihi olmayan rutin görevler için "Süresiz" seçeneği (`is_suresiz`)
+  - **Destek Ekibi:** Görevlere ana sorumlu haricinde "Destek Verenler" atayabilme
+  - **Merkezi İş Havuzu:** Görev kartlarında görsel iyileştirmeler ve kompakt tasarım
+  - **Filtreleme:** Sorumlu kişi ve durum bazlı dinamik filtreleme
+
+#### 🔧 Teknik Güncellemeler
+- **Veritabanı Şeması:** `Gorev` modeline `is_suresiz` ve `destek_verenler` alanları eklendi
+- **Durum Yönetimi:** `BEKLEYEN` durumu kaldırılarak süreç sadeleştirildi (Varsayılan: `DEVAM_EDEN`)
+- **API:** Filtreleme parametreleri (`userId`) optimize edildi
+
+### v1.0.0-beta (2025-12-26)
 
 #### ✅ Yeni Özellikler
 - **Görev & Takvim Modülü (Tam Entegre)**
@@ -419,8 +439,8 @@ halksagligi/
 
 **Geliştirici:** FOKUS İstatistik  
 **Email:** support@fokusistatistik.com  
-**Versiyon:** 1.0.0-beta  
-**Son Güncelleme:** 2025-12-26
+**Versiyon:** 1.1.0-beta
+**Son Güncelleme:** 2025-12-29
 
 ---
 

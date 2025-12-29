@@ -1,7 +1,7 @@
 # Sistem Mimarisi - Kocaeli İl Sağlık Müdürlüğü Halk Sağlığı Yönetim Sistemi
 
-**Versiyon:** 1.0.0
-**Tarih:** 2025-12-24
+**Versiyon:** 1.1.0
+**Tarih:** 2025-12-29
 **Geliştirici:** FOKUS İstatistik
 
 ---
@@ -196,14 +196,15 @@ interface Gorev {
   id: string;
   baslik: string;
   aciklama: string;
-  durum: 'beklemede' | 'devam_ediyor' | 'tamamlandi' | 'iptal';
-  oncelik: 'dusuk' | 'orta' | 'yuksek' | 'acil';
-  atanan_id: string;
+  durum: 'DEVAM_EDEN' | 'TAMAMLANDI' | 'IPTAL';
+  oncelik: 'DUSUK' | 'ORTA' | 'YUKSEK' | 'ACIL';
+  sorumlu_id: string;
   olusturan_id: string;
+  destek_verenler: string[]; // ID listesi
   birim_id: string;
   baslangic_tarihi: Date;
-  bitis_tarihi: Date;
-
+  bitis_tarihi?: Date;
+  is_suresiz: boolean;
 }
 ```
 

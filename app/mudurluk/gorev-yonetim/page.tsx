@@ -16,7 +16,8 @@ import {
     Search,
     MessageSquare,
     AlertCircle,
-    Settings
+    Settings,
+    Edit
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -331,6 +332,34 @@ export default function GorevYonetimPage() {
         }
     };
 
+    // --- Helper Functions ---
+    const getDaysRemaining = (date: string | Date) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const target = new Date(date);
+        target.setHours(0, 0, 0, 0);
+        return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    };
+
+    const getDateColorClass = (date: string | Date) => {
+        const days = getDaysRemaining(date);
+        if (days < 0) return 'bg-gray-800 text-white';
+        if (days === 0) return 'bg-red-800 text-white';
+        if (days <= 2) return 'bg-red-400 text-white';
+        if (days <= 7) return 'bg-orange-300 text-gray-800';
+        return 'bg-yellow-200 text-gray-800';
+    };
+
+    const getPriorityBadgeClass = (priority: string) => {
+        switch (priority) {
+            case 'ACIL': return 'border-red-500 text-red-700 bg-red-50';
+            case 'YUKSEK': return 'border-orange-500 text-orange-700 bg-orange-50';
+            case 'ORTA': return 'border-yellow-600 text-yellow-800 bg-yellow-50';
+            case 'DUSUK': return 'border-green-600 text-green-800 bg-green-50';
+            default: return 'border-blue-500 text-blue-700 bg-blue-50';
+        }
+    };
+
     // --- Sub-Components ---
 
     return (
@@ -503,14 +532,17 @@ export default function GorevYonetimPage() {
                                     })
                                     .map(gorev => {
                                         const isLate = gorev.bitis_tarihi && new Date(gorev.bitis_tarihi) < new Date() && gorev.durum !== 'TAMAMLANDI' && gorev.durum !== 'IPTAL';
+                                        const daysRemaining = gorev.bitis_tarihi ? getDaysRemaining(gorev.bitis_tarihi) : null;
 
                                         return (
                                             <Card key={gorev.id}
                                                 className={`group hover:shadow-lg transition-all cursor-pointer overflow-hidden border-l-4 ${gorev.durum === 'IPTAL' ? 'border-l-gray-300 opacity-60 bg-gray-50' :
                                                     isLate ? 'border-l-red-500 bg-red-50/10' :
-                                                        gorev.oncelik === 'ACIL' ? 'border-l-red-500' :
+                                                        gorev.oncelik === 'ACIL' ? 'border-l-red-500 animate-pulse' :
                                                             gorev.oncelik === 'YUKSEK' ? 'border-l-orange-500' :
-                                                                'border-l-blue-500'
+                                                                gorev.oncelik === 'ORTA' ? 'border-l-yellow-500' :
+                                                                    gorev.oncelik === 'DUSUK' ? 'border-l-green-500' :
+                                                                        'border-l-blue-500'
                                                     }`}
                                                 onClick={() => {
                                                     setSelectedGorev(gorev);
@@ -519,16 +551,34 @@ export default function GorevYonetimPage() {
                                             >
                                                 <div className="p-4 space-y-3">
                                                     <div className="flex justify-between items-start">
-                                                        <div className="flex gap-2 mb-1">
+                                                        <div className="flex flex-wrap gap-2 mb-1 flex-1">
                                                             <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider">
                                                                 {gorev.kategori}
+                                                            </Badge>
+                                                            <Badge variant="outline" className={`text-[9px] font-bold ${getPriorityBadgeClass(gorev.oncelik)}`}>
+                                                                {gorev.oncelik}
                                                             </Badge>
                                                             {gorev.kod && <span className="text-[9px] font-mono text-gray-400 self-center">{gorev.kod}</span>}
                                                             {isLate && <Badge className="bg-red-100 text-red-700 text-[9px] font-bold">GECİKTİ</Badge>}
                                                             {gorev.durum === 'IPTAL' && <Badge className="bg-gray-200 text-gray-700 text-[9px] font-bold">İPTAL EDİLDİ</Badge>}
                                                         </div>
-                                                        <div className="text-[10px] text-gray-400 font-mono">
-                                                            {new Date(gorev.created_at).toLocaleDateString('tr-TR')}
+                                                        <div className="flex items-center gap-2">
+                                                            {isManagement && gorev.durum !== 'TAMAMLANDI' && gorev.durum !== 'IPTAL' && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedGorev(gorev);
+                                                                        setGorevUpdate({ durum: gorev.durum, mesaj: '', tamamlanma_notu: gorev.tamamlanma_notu || '', gorsel_url: '' });
+                                                                    }}
+                                                                    className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                                                                    title="Görevi Düzenle"
+                                                                >
+                                                                    <Edit className="w-3.5 h-3.5 text-gray-500" />
+                                                                </button>
+                                                            )}
+                                                            <div className="text-[10px] text-gray-400 font-mono">
+                                                                {new Date(gorev.created_at).toLocaleDateString('tr-TR')}
+                                                            </div>
                                                         </div>
                                                     </div>
 
@@ -545,9 +595,18 @@ export default function GorevYonetimPage() {
                                                     </div>
                                                 </div>
                                                 {gorev.bitis_tarihi && (
-                                                    <div className={`px-4 py-2 text-[10px] font-bold flex items-center gap-1 ${isLate ? 'bg-red-100 text-red-700' : 'bg-gray-50 text-gray-500'}`}>
-                                                        <Clock className="w-3 h-3" />
-                                                        {new Date(gorev.bitis_tarihi).toLocaleDateString('tr-TR')}
+                                                    <div className={`px-4 py-2 text-[10px] font-bold flex items-center justify-between ${getDateColorClass(gorev.bitis_tarihi)}`}>
+                                                        <div className="flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" />
+                                                            {new Date(gorev.bitis_tarihi).toLocaleDateString('tr-TR')}
+                                                        </div>
+                                                        {daysRemaining !== null && (
+                                                            <span className="text-[9px] opacity-90">
+                                                                {daysRemaining < 0 ? `${Math.abs(daysRemaining)} gün gecikti` :
+                                                                    daysRemaining === 0 ? 'Bugün' :
+                                                                        `${daysRemaining} gün kaldı`}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 )}
                                                 {!gorev.bitis_tarihi && (

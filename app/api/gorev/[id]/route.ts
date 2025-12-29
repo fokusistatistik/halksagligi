@@ -73,7 +73,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             // Tamamlanma veya İptal durumunda kayıt al
             if (['TAMAMLANDI', 'IPTAL'].includes(body.durum)) {
                 updateData.tamamlanma_tarihi = new Date();
-                updateData.tamamlayan_id = user.id;
+                updateData.tamamlayan_id = parseInt(user.id);
                 if (body.tamamlanma_notu) {
                     updateData.tamamlanma_notu = body.tamamlanma_notu;
                     // Ayrıca log olarak da ekle

@@ -111,7 +111,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             if (body.aciklama) updateData.aciklama = body.aciklama;
             if (body.oncelik) updateData.oncelik = body.oncelik;
             if (body.sorumlu_id) updateData.sorumlu_id = parseInt(body.sorumlu_id);
-            if (body.bitis_tarihi) updateData.bitis_tarihi = new Date(body.bitis_tarihi);
+            if (body.baslangic_tarihi) updateData.baslangic_tarihi = new Date(body.baslangic_tarihi);
+
+            if (body.bitis_tarihi !== undefined) {
+                updateData.bitis_tarihi = body.bitis_tarihi ? new Date(body.bitis_tarihi) : null;
+            }
 
             // Destek personellerini güncelle
             if (body.destek_verenler) {
@@ -134,6 +138,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                 },
                 sorumlu: {
                     select: { id: true, ad: true, soyad: true, profil_foto_url: true, unvan: true }
+                },
+                olusturan: {
+                    select: { id: true, ad: true, soyad: true }
                 }
             }
         });

@@ -17,7 +17,9 @@ import {
     MessageSquare,
     AlertCircle,
     Settings,
-    Edit
+    Edit,
+    X,
+    AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -91,6 +93,7 @@ export default function GorevYonetimPage() {
 
     const [activeTab, setActiveTab] = useState('list');
     const [subTab, setSubTab] = useState<'DEVAM_EDEN' | 'TAMAMLANDI'>('DEVAM_EDEN');
+    const [createStep, setCreateStep] = useState(1);
     const [gorevler, setGorevler] = useState<Gorev[]>([]);
     const [etkinlikler, setEtkinlikler] = useState<Etkinlik[]>([]);
     const [personeller, setPersoneller] = useState<any[]>([]);
@@ -109,7 +112,7 @@ export default function GorevYonetimPage() {
     const [isEtkinlikModalOpen, setIsEtkinlikModalOpen] = useState(false);
     const [selectedGorev, setSelectedGorev] = useState<Gorev | null>(null);
     const [selectedEtkinlik, setSelectedEtkinlik] = useState<Etkinlik | null>(null);
-    const [gorevUpdate, setGorevUpdate] = useState({ durum: '', mesaj: '', tamamlanma_notu: '', gorsel_url: '' });
+    const [gorevUpdate, setGorevUpdate] = useState<any>({ durum: '', mesaj: '', tamamlanma_notu: '', gorsel_url: '', baslik: '', aciklama: '', oncelik: '', sorumlu_id: '', baslangic_tarihi: '', bitis_tarihi: '', destek_verenler: [] });
 
     // Forms
     const [newGorev, setNewGorev] = useState({
@@ -142,6 +145,25 @@ export default function GorevYonetimPage() {
             setNewGorev(prev => ({ ...prev, sorumlu_id: user.id }));
         }
     }, [user]);
+
+    useEffect(() => {
+        if (selectedGorev) {
+            setGorevUpdate({
+                durum: selectedGorev.durum || 'DEVAM_EDEN', // Default to current status or DEVAM_EDEN
+                mesaj: '',
+                tamamlanma_notu: '',
+                gorsel_url: '',
+                // Pre-fill settings
+                baslik: selectedGorev.baslik,
+                aciklama: selectedGorev.aciklama,
+                oncelik: selectedGorev.oncelik,
+                sorumlu_id: selectedGorev.sorumlu.id.toString(),
+                baslangic_tarihi: selectedGorev.baslangic_tarihi ? new Date(selectedGorev.baslangic_tarihi).toISOString().split('T')[0] : '',
+                bitis_tarihi: selectedGorev.bitis_tarihi ? new Date(selectedGorev.bitis_tarihi).toISOString().split('T')[0] : '',
+                destek_verenler: selectedGorev.destek_verenler?.map(p => p.id.toString()) || []
+            });
+        }
+    }, [selectedGorev]);
 
     useEffect(() => {
         if (session) {
@@ -209,20 +231,23 @@ export default function GorevYonetimPage() {
         }
     };
 
-    const handleGorevSubmit = async (e: React.FormEvent) => {
+    const handleCreateStep1 = (e: React.FormEvent) => {
         e.preventDefault();
+        setCreateStep(2);
+    };
+
+    const handleCreateConfirm = async () => {
         try {
-            console.log('Sending gorev data:', newGorev); // Debug log
             const res = await fetch('/api/gorev', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newGorev)
             });
             const data = await res.json();
-            console.log('API Response:', data); // Debug log
             if (data.success) {
                 toast.success('Görev başarıyla oluşturuldu');
                 setIsGorevModalOpen(false);
+                setCreateStep(1);
                 setNewGorev({
                     baslik: '',
                     aciklama: '',
@@ -239,11 +264,9 @@ export default function GorevYonetimPage() {
                 });
                 fetchData();
             } else {
-                console.error('API Error:', data.error); // Debug log
                 toast.error(data.error || 'Hata oluştu');
             }
         } catch (_error) {
-            console.error('Fetch error:', _error); // Debug log
             toast.error('Bağlantı hatası');
         }
     };
@@ -270,19 +293,65 @@ export default function GorevYonetimPage() {
         }
     };
 
-    const handleGorevUpdate = async (e: React.FormEvent) => {
+    const handleStatusSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedGorev) return;
         try {
+            const payload = {
+                durum: gorevUpdate.durum,
+                mesaj: gorevUpdate.mesaj,
+                tamamlanma_notu: gorevUpdate.tamamlanma_notu,
+                gorsel_url: gorevUpdate.gorsel_url
+            };
             const res = await fetch(`/api/gorev/${selectedGorev.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(gorevUpdate)
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {
-                toast.success('Görev güncellendi');
-                setGorevUpdate({ mesaj: '', durum: '', gorsel_url: '', tamamlanma_notu: '' });
+                toast.success('Durum güncellendi');
+                setGorevUpdate(prev => ({ ...prev, mesaj: '', gorsel_url: '' }));
+                if (data.data) {
+                    setSelectedGorev(data.data);
+                    // Update list locally to reflect changes immediately
+                    setGorevler(prev => prev.map(g => g.id === data.data.id ? data.data : g));
+                }
+                fetchData();
+            } else {
+                toast.error(data.error || 'Hata oluştu');
+            }
+        } catch (_error) {
+            toast.error('Bağlantı hatası');
+        }
+    };
+
+    const handleSettingsSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedGorev) return;
+        try {
+            // Exclude status related fields, send only settings
+            const payload = {
+                baslik: gorevUpdate.baslik,
+                aciklama: gorevUpdate.aciklama,
+                oncelik: gorevUpdate.oncelik,
+                sorumlu_id: gorevUpdate.sorumlu_id,
+                baslangic_tarihi: gorevUpdate.baslangic_tarihi,
+                bitis_tarihi: gorevUpdate.bitis_tarihi,
+                destek_verenler: gorevUpdate.destek_verenler
+            };
+            const res = await fetch(`/api/gorev/${selectedGorev.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success('Ayarlar kaydedildi');
+                if (data.data) {
+                    setSelectedGorev(data.data);
+                    setGorevler(prev => prev.map(g => g.id === data.data.id ? data.data : g));
+                }
                 fetchData();
             } else {
                 toast.error(data.error || 'Hata oluştu');
@@ -844,143 +913,202 @@ export default function GorevYonetimPage() {
 
             <Dialog open={isGorevModalOpen} onOpenChange={setIsGorevModalOpen}>
                 <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-                    <form onSubmit={handleGorevSubmit}>
-                        <DialogHeader>
-                            <DialogTitle>Yeni Görev Ata</DialogTitle>
-                            <DialogDescription>Personel sorumluluğuna yeni bir iş süreci ekleyin.</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <Label htmlFor="baslik">Görev Başlığı <span className="text-red-500">*</span></Label>
-                                    <Input id="baslik" required value={newGorev.baslik} onChange={(e) => setNewGorev({ ...newGorev, baslik: e.target.value })} />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label htmlFor="kategori">Kategori</Label>
-                                    <Select value={newGorev.kategori} onValueChange={(val) => setNewGorev({ ...newGorev, kategori: val })}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="DENETIM">Denetim</SelectItem>
-                                            <SelectItem value="EGITIM">Eğitim</SelectItem>
-                                            <SelectItem value="TOPLANTI">Toplantı</SelectItem>
-                                            <SelectItem value="PROJE">Proje</SelectItem>
-                                            <SelectItem value="KONTROL">Kontrol</SelectItem>
-                                            <SelectItem value="TARAMA">Tarama</SelectItem>
-                                            <SelectItem value="STAND">Stand</SelectItem>
-                                            <SelectItem value="ZIYARET">Ziyaret</SelectItem>
-                                            <SelectItem value="DIGER">Diğer</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label htmlFor="sorumlu">Sorumlu Personel</Label>
-                                <Select value={newGorev.sorumlu_id} onValueChange={(val) => setNewGorev({ ...newGorev, sorumlu_id: val })}>
-                                    <SelectTrigger><SelectValue placeholder="Personel seçin" /></SelectTrigger>
-                                    <SelectContent>
-                                        {personeller.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.ad} {p.soyad} - {p.unvan}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label>Destek Veren Personeller</Label>
-                                <Select
-                                    value={newGorev.destek_verenler.length > 0 ? newGorev.destek_verenler[0] : ''}
-                                    onValueChange={(val) => {
-                                        if (!newGorev.destek_verenler.includes(val)) {
-                                            setNewGorev(prev => ({ ...prev, destek_verenler: [...prev.destek_verenler, val] }));
-                                        }
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={newGorev.destek_verenler.length > 0 ? `${newGorev.destek_verenler.length} Kişi Seçildi` : "Personel Ekle..."} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {personeller.filter(p => p.id !== newGorev.sorumlu_id).map(p => (
-                                            <SelectItem key={p.id} value={p.id} disabled={newGorev.destek_verenler.includes(p.id)}>
-                                                {p.ad} {p.soyad}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {newGorev.destek_verenler.map(id => {
-                                        const p = personeller.find(x => x.id === id);
-                                        return p ? (
-                                            <Badge key={id} variant="secondary" className="flex items-center gap-1 cursor-pointer hover:bg-red-100 hover:text-red-700" onClick={() => {
-                                                setNewGorev(prev => ({ ...prev, destek_verenler: prev.destek_verenler.filter(x => x !== id) }));
-                                            }}>
-                                                {p.ad} {p.soyad} <XCircle className="w-3 h-3" />
-                                            </Badge>
-                                        ) : null;
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-1">
-                                    <Label>Öncelik</Label>
-                                    <Select value={newGorev.oncelik} onValueChange={(val: any) => setNewGorev({ ...newGorev, oncelik: val })}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="DUSUK">Düşük</SelectItem>
-                                            <SelectItem value="ORTA">Orta</SelectItem>
-                                            <SelectItem value="YUKSEK">Yüksek</SelectItem>
-                                            <SelectItem value="ACIL">Acil</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label>Başlangıç Tarihi <span className="text-red-500">*</span></Label>
-                                    <Input type="date" required value={newGorev.baslangic_tarihi} onChange={(e) => setNewGorev({ ...newGorev, baslangic_tarihi: e.target.value })} />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                        <Label>Bitiş Tarihi</Label>
-                                        <label className="text-[10px] flex items-center gap-1 cursor-pointer">
-                                            <input type="checkbox" checked={!newGorev.bitis_tarihi && newGorev.is_suresiz}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) setNewGorev(prev => ({ ...prev, bitis_tarihi: '', is_suresiz: true }));
-                                                    else setNewGorev(prev => ({ ...prev, is_suresiz: false }));
-                                                }}
-                                            /> Süresiz
-                                        </label>
+                    {createStep === 1 && (
+                        <form onSubmit={handleCreateStep1}>
+                            <DialogHeader>
+                                <DialogTitle>Yeni Görev Ata</DialogTitle>
+                                <DialogDescription>Personel sorumluluğuna yeni bir iş süreci ekleyin.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="baslik">Görev Başlığı <span className="text-red-500">*</span></Label>
+                                        <Input id="baslik" required value={newGorev.baslik} onChange={(e) => setNewGorev({ ...newGorev, baslik: e.target.value })} />
                                     </div>
-                                    <Input type="date" value={newGorev.bitis_tarihi} disabled={newGorev.is_suresiz} min={newGorev.baslangic_tarihi}
-                                        onChange={(e) => setNewGorev({ ...newGorev, bitis_tarihi: e.target.value })} />
+                                    <div className="space-y-1">
+                                        <Label htmlFor="kategori">Kategori</Label>
+                                        <Select value={newGorev.kategori} onValueChange={(val) => setNewGorev({ ...newGorev, kategori: val })}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="DENETIM">Denetim</SelectItem>
+                                                <SelectItem value="EGITIM">Eğitim</SelectItem>
+                                                <SelectItem value="TOPLANTI">Toplantı</SelectItem>
+                                                <SelectItem value="PROJE">Proje</SelectItem>
+                                                <SelectItem value="KONTROL">Kontrol</SelectItem>
+                                                <SelectItem value="TARAMA">Tarama</SelectItem>
+                                                <SelectItem value="STAND">Stand</SelectItem>
+                                                <SelectItem value="ZIYARET">Ziyaret</SelectItem>
+                                                <SelectItem value="DIGER">Diğer</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="space-y-1">
-                                <Label>Açıklama (En az 10 karakter) <span className="text-red-500">*</span></Label>
-                                <Textarea minLength={10} required value={newGorev.aciklama} onChange={(e) => setNewGorev({ ...newGorev, aciklama: e.target.value })} />
-                            </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="sorumlu">Sorumlu Personel</Label>
+                                    <Select value={newGorev.sorumlu_id} onValueChange={(val) => setNewGorev({ ...newGorev, sorumlu_id: val })}>
+                                        <SelectTrigger><SelectValue placeholder="Personel seçin" /></SelectTrigger>
+                                        <SelectContent>
+                                            {personeller.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.ad} {p.soyad} - {p.unvan}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                            <div className="space-y-4 border-t pt-4">
-                                <Label className="text-xs uppercase font-bold text-gray-500">Ek Görseller ve Notlar</Label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className="space-y-2 p-2 bg-gray-50 rounded-lg">
-                                            <Label className="text-[10px]">Görsel {i} URL</Label>
-                                            <Input className="h-8 text-xs" placeholder="https://"
-                                                value={(newGorev as any)[`gorsel_${i} `]}
-                                                onChange={(e) => setNewGorev({ ...newGorev, [`gorsel_${i} `]: e.target.value })}
-                                            />
-                                            <Input className="h-8 text-xs" placeholder="Görsel Notu"
-                                                value={(newGorev as any)[`gorsel_${i} _not`]}
-                                                onChange={(e) => setNewGorev({ ...newGorev, [`gorsel_${i} _not`]: e.target.value })}
-                                            />
+                                <div className="space-y-1">
+                                    <Label>Destek Veren Personeller</Label>
+                                    <Select
+                                        value={newGorev.destek_verenler.length > 0 ? newGorev.destek_verenler[0] : ''}
+                                        onValueChange={(val) => {
+                                            if (!newGorev.destek_verenler.includes(val)) {
+                                                setNewGorev(prev => ({ ...prev, destek_verenler: [...prev.destek_verenler, val] }));
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={newGorev.destek_verenler.length > 0 ? `${newGorev.destek_verenler.length} Kişi Seçildi` : "Personel Ekle..."} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {personeller.filter(p => p.id.toString() !== newGorev.sorumlu_id).map(p => (
+                                                <SelectItem key={p.id} value={p.id.toString()} disabled={newGorev.destek_verenler.includes(p.id.toString())}>
+                                                    {p.ad} {p.soyad}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {newGorev.destek_verenler.map(id => {
+                                            const p = personeller.find(x => x.id.toString() === id);
+                                            return p ? (
+                                                <Badge key={id} variant="secondary" className="flex items-center gap-1 cursor-pointer hover:bg-red-100 hover:text-red-700" onClick={() => {
+                                                    setNewGorev(prev => ({ ...prev, destek_verenler: prev.destek_verenler.filter(x => x !== id) }));
+                                                }}>
+                                                    {p.ad} {p.soyad} <XCircle className="w-3 h-3" />
+                                                </Badge>
+                                            ) : null;
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="space-y-1">
+                                        <Label>Öncelik</Label>
+                                        <Select value={newGorev.oncelik} onValueChange={(val: any) => setNewGorev({ ...newGorev, oncelik: val })}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="DUSUK">Düşük</SelectItem>
+                                                <SelectItem value="ORTA">Orta</SelectItem>
+                                                <SelectItem value="YUKSEK">Yüksek</SelectItem>
+                                                <SelectItem value="ACIL">Acil</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Başlangıç Tarihi <span className="text-red-500">*</span></Label>
+                                        <Input type="date" required value={newGorev.baslangic_tarihi} onChange={(e) => setNewGorev({ ...newGorev, baslangic_tarihi: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between items-center">
+                                            <Label>Bitiş Tarihi</Label>
+                                            <label className="text-[10px] flex items-center gap-1 cursor-pointer">
+                                                <input type="checkbox" checked={!newGorev.bitis_tarihi && newGorev.is_suresiz}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) setNewGorev(prev => ({ ...prev, bitis_tarihi: '', is_suresiz: true }));
+                                                        else setNewGorev(prev => ({ ...prev, is_suresiz: false }));
+                                                    }}
+                                                /> Süresiz
+                                            </label>
                                         </div>
-                                    ))}
+                                        <Input type="date" value={newGorev.bitis_tarihi} disabled={newGorev.is_suresiz} min={newGorev.baslangic_tarihi}
+                                            onChange={(e) => setNewGorev({ ...newGorev, bitis_tarihi: e.target.value })} />
+                                    </div>
                                 </div>
+
+                                <div className="space-y-1">
+                                    <Label>Açıklama (En az 10 karakter) <span className="text-red-500">*</span></Label>
+                                    <Textarea minLength={10} required value={newGorev.aciklama} onChange={(e) => setNewGorev({ ...newGorev, aciklama: e.target.value })} />
+                                </div>
+
+                                <div className="space-y-4 border-t pt-4">
+                                    <Label className="text-xs uppercase font-bold text-gray-500">Ek Görseller ve Notlar</Label>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {[1, 2, 3].map(i => (
+                                            <div key={i} className="space-y-2 p-2 bg-gray-50 rounded-lg">
+                                                <Label className="text-[10px]">Görsel {i} URL</Label>
+                                                <Input className="h-8 text-xs" placeholder="https://"
+                                                    value={(newGorev as any)[`gorsel_${i}`]}
+                                                    onChange={(e) => setNewGorev({ ...newGorev, [`gorsel_${i}`]: e.target.value })}
+                                                />
+                                                <Input className="h-8 text-xs" placeholder="Görsel Notu"
+                                                    value={(newGorev as any)[`gorsel_${i}_not`]}
+                                                    onChange={(e) => setNewGorev({ ...newGorev, [`gorsel_${i}_not`]: e.target.value })}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit">İlerle</Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+
+                    {createStep === 2 && (
+                        <div className="space-y-6 py-4">
+                            <div className="flex items-center gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl text-orange-800">
+                                <AlertTriangle className="w-8 h-8 shrink-0" />
+                                <div>
+                                    <h4 className="font-bold text-lg">Görevi Onayla</h4>
+                                    <p className="text-sm">Lütfen aşağıdaki bilgileri kontrol edip onaylayın. Görev ilgili personele atanacaktır.</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-50 p-6 rounded-xl border space-y-4 text-sm">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="text-xs font-bold text-gray-500 uppercase">Görev Başlığı</div>
+                                        <div className="font-bold text-lg text-gray-900">{newGorev.baslik}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs font-bold text-gray-500 uppercase">Kategori & Öncelik</div>
+                                        <div className="flex gap-2 mt-1">
+                                            <Badge variant="outline">{newGorev.kategori}</Badge>
+                                            <Badge>{newGorev.oncelik}</Badge>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-dashed border-gray-300">
+                                    <div>
+                                        <div className="text-xs font-bold text-gray-500 uppercase">Sorumlu Personel</div>
+                                        <div className="font-bold">
+                                            {personeller.find(p => p.id.toString() === newGorev.sorumlu_id)?.ad} {personeller.find(p => p.id.toString() === newGorev.sorumlu_id)?.soyad}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs font-bold text-gray-500 uppercase">Zamanlama</div>
+                                        <div>
+                                            {new Date(newGorev.baslangic_tarihi).toLocaleDateString()} - {newGorev.bitis_tarihi ? new Date(newGorev.bitis_tarihi).toLocaleDateString() : 'Süresiz'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 border-t border-dashed border-gray-300">
+                                    <div className="text-xs font-bold text-gray-500 uppercase mb-1">Açıklama</div>
+                                    <div className="bg-white p-3 rounded border text-gray-700 leading-relaxed font-medium">
+                                        {newGorev.aciklama}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4">
+                                <Button variant="outline" onClick={() => setCreateStep(1)} className="h-12 px-6">Geri Dön & Düzenle</Button>
+                                <Button onClick={handleCreateConfirm} className="bg-green-600 hover:bg-green-700 h-12 px-8 font-bold text-base shadow-lg hover:shadow-xl transition-all">
+                                    <CheckCircle2 className="w-5 h-5 mr-2" /> ONAYLA VE GÖREVİ ATA
+                                </Button>
                             </div>
                         </div>
-                        <DialogFooter>
-                            <Button type="submit">Görevi Tanımla</Button>
-                        </DialogFooter>
-                    </form>
+                    )}
                 </DialogContent>
             </Dialog>
 
@@ -1129,9 +1257,8 @@ export default function GorevYonetimPage() {
                                 </Button>
                                 {selectedEtkinlik.personel_id === user?.id && (
                                     <Button
-                                        variant="destructive"
+                                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                                         onClick={() => handleCancelEtkinlik(selectedEtkinlik.id)}
-                                        className="flex-1"
                                     >
                                         <XCircle className="w-4 h-4 mr-2" />
                                         Etkinliği İptal Et
@@ -1144,188 +1271,221 @@ export default function GorevYonetimPage() {
             </Dialog>
 
             <Dialog open={!!selectedGorev} onOpenChange={(open) => !open && setSelectedGorev(null)}>
-                <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden max-h-[95vh] flex flex-col">
-                    <DialogHeader className="hidden">
-                        <DialogTitle>Görev Detayı</DialogTitle>
-                    </DialogHeader>
+                <DialogContent className="sm:max-w-[1000px] p-0 overflow-hidden max-h-[95vh] flex flex-col">
                     {selectedGorev && (
-                        <div className="flex flex-col h-full bg-gray-50/50">
+                        <>
                             {/* Header */}
-                            <div className="bg-gray-900 text-white p-4 shrink-0">
-                                <div className="flex justify-between items-start gap-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Badge variant="outline" className="text-white border-white/20 text-[10px] uppercase font-bold tracking-wider rounded-md">
+                            <div className="bg-gray-900 text-white p-3 shrink-0 relative">
+                                <div className="absolute top-2 right-2 z-50">
+                                    <button
+                                        onClick={() => setSelectedGorev(null)}
+                                        className="bg-white/90 hover:bg-white text-gray-900 p-1.5 rounded-full shadow-lg transition-all hover:scale-110"
+                                        title="Kapat"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="flex flex-col gap-2 pr-10">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="text-white border-white/20 text-[9px] uppercase font-bold tracking-wider rounded-md">
                                                 {selectedGorev.kategori}
                                             </Badge>
-                                            <Badge className={`text - [10px] font - bold ${selectedGorev.oncelik === 'ACIL' ? 'bg-red-500 hover:bg-red-600' :
+                                            <Badge className={`text-[9px] font-bold ${selectedGorev.oncelik === 'ACIL' ? 'bg-red-500 hover:bg-red-600' :
                                                 selectedGorev.oncelik === 'YUKSEK' ? 'bg-orange-500 hover:bg-orange-600' :
                                                     'bg-blue-500 hover:bg-blue-600'
                                                 } `}>
                                                 {selectedGorev.oncelik}
                                             </Badge>
-                                            <Badge variant="secondary" className="text-[10px] bg-white/10 text-white hover:bg-white/20">
+                                            <Badge variant="secondary" className="text-[9px] bg-white/10 text-white hover:bg-white/20">
                                                 {selectedGorev.durum}
                                             </Badge>
                                         </div>
-                                        <h2 className="text-lg font-black tracking-tight leading-tight mb-2">{selectedGorev.baslik}</h2>
-                                        <p className="text-xs text-gray-400 font-medium">
-                                            {selectedGorev.aciklama}
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2 text-right">
-                                        <div className="text-[10px] text-gray-400 font-mono">
-                                            {new Date(selectedGorev.created_at).toLocaleDateString('tr-TR')}
+                                        <div className="flex items-center gap-3 text-[9px] text-gray-400">
+                                            <span>📅 {new Date(selectedGorev.baslangic_tarihi || selectedGorev.created_at).toLocaleDateString('tr-TR')}</span>
+                                            <span>→</span>
+                                            <span>{selectedGorev.bitis_tarihi ? new Date(selectedGorev.bitis_tarihi).toLocaleDateString('tr-TR') : 'Süresiz'}</span>
                                         </div>
-                                        <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-lg border border-white/10">
-                                            <div className="text-right">
+                                    </div>
+                                    <h2 className="text-base font-black tracking-tight leading-tight">{selectedGorev.baslik}</h2>
+                                    <p className="text-[11px] text-gray-400 font-medium leading-snug">
+                                        {selectedGorev.aciklama}
+                                    </p>
+                                    <div className="flex items-center gap-3 pt-2 border-t border-white/10">
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="w-6 h-6 border-2 border-gray-800">
+                                                <AvatarImage src={selectedGorev.sorumlu?.profil_foto_url} />
+                                                <AvatarFallback className="text-[10px] bg-gray-700">{selectedGorev.sorumlu?.ad?.[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
                                                 <div className="text-[10px] font-bold text-gray-200">
                                                     {selectedGorev.sorumlu?.ad} {selectedGorev.sorumlu?.soyad}
                                                 </div>
-                                                <div className="text-[9px] text-gray-500 uppercase font-black">Sorumlu</div>
+                                                <div className="text-[8px] text-gray-500 uppercase font-black">Sorumlu</div>
                                             </div>
-                                            <Avatar className="w-8 h-8 border-2 border-gray-800">
-                                                <AvatarImage src={selectedGorev.sorumlu?.profil_foto_url} />
-                                                <AvatarFallback className="text-xs bg-gray-700">{selectedGorev.sorumlu?.ad?.[0]}</AvatarFallback>
-                                            </Avatar>
                                         </div>
+                                        {selectedGorev.destek_verenler && selectedGorev.destek_verenler.length > 0 && (
+                                            <div className="flex items-center gap-2 ml-auto">
+                                                <span className="text-[8px] text-gray-500 font-bold uppercase">Destek:</span>
+                                                <div className="flex items-center gap-1">
+                                                    {selectedGorev.destek_verenler.map((p, idx) => (
+                                                        <span key={p.id} className="text-[9px] text-gray-300 font-medium">
+                                                            {p.ad} {p.soyad}{idx < selectedGorev.destek_verenler.length - 1 ? ',' : ''}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                {selectedGorev.destek_verenler && selectedGorev.destek_verenler.length > 0 && (
-                                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Destek Ekibi</span>
-                                        <div className="flex -space-x-2">
-                                            {selectedGorev.destek_verenler.map(p => (
-                                                <Avatar key={p.id} className="w-6 h-6 border-2 border-gray-900">
-                                                    <AvatarImage src={p.profil_foto_url} />
-                                                    <AvatarFallback className="text-[10px] bg-gray-800 text-white">{p.ad[0]}</AvatarFallback>
-                                                </Avatar>
+                            </div>
+
+                            {/* Body */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+
+                                {/* Süreç Günlüğü ve Durum Güncelleme */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                                    {/* Süreç Günlüğü */}
+                                    <div className="bg-white p-3 rounded-xl border shadow-sm">
+                                        <h4 className="font-black text-gray-900 flex items-center gap-2 border-b pb-2 mb-2 text-xs">
+                                            <MessageSquare className="w-3 h-3" /> SÜREÇ GÜNLÜĞÜ
+                                        </h4>
+                                        <div className="max-h-[280px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                                            {selectedGorev.guncellemeler.map((u, i) => (
+                                                <div key={i} className="bg-gray-50 p-2 rounded-lg border text-sm">
+                                                    <div className="flex justify-between mb-0.5">
+                                                        <span className="font-bold text-[10px] text-primary">{u.personel.ad} {u.personel.soyad}</span>
+                                                        <span className="text-[9px] text-gray-400">{new Date(u.created_at).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                                    </div>
+                                                    <p className="text-gray-600 text-[10px] leading-snug">{u.mesaj}</p>
+                                                </div>
                                             ))}
+                                            {selectedGorev.guncellemeler.length === 0 && <div className="text-center text-[10px] text-gray-400 py-4">Henüz kayıt yok.</div>}
                                         </div>
+                                    </div>
+
+                                    {/* Durum Güncelleme */}
+                                    <div className="bg-white p-4 rounded-xl border shadow-sm">
+                                        <h4 className="font-black text-gray-900 border-b pb-2 mb-4 text-sm uppercase">DURUM GÜNCELLE</h4>
+                                        <form onSubmit={handleStatusSubmit} className="space-y-3">
+                                            <div className="space-y-1">
+                                                <Label className="text-xs">Aksiyon</Label>
+                                                <Select value={gorevUpdate.durum} onValueChange={(val) => setGorevUpdate({ ...gorevUpdate, durum: val })}>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="DEVAM_EDEN">Devam Ediyor</SelectItem>
+                                                        <SelectItem value="TAMAMLANDI">Tamamlandı</SelectItem>
+                                                        {isManagement && <SelectItem value="IPTAL">İptal Et</SelectItem>}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            {(gorevUpdate.durum === 'TAMAMLANDI' || gorevUpdate.durum === 'IPTAL') && (
+                                                <Textarea placeholder="Sonuç notu..." required value={gorevUpdate.tamamlanma_notu} onChange={e => setGorevUpdate({ ...gorevUpdate, tamamlanma_notu: e.target.value })} className="text-xs" />
+                                            )}
+                                            <Textarea placeholder="Süreç notu ekle..." value={gorevUpdate.mesaj} onChange={e => setGorevUpdate({ ...gorevUpdate, mesaj: e.target.value })} className="text-xs min-h-[80px]" />
+
+                                            <div className="space-y-1">
+                                                <Label className="text-xs">Görsel Kanıt (URL)</Label>
+                                                <Input className="h-9 text-xs" placeholder="https://..." value={gorevUpdate.gorsel_url || ''} onChange={(e) => setGorevUpdate({ ...gorevUpdate, gorsel_url: e.target.value })} />
+                                            </div>
+
+                                            <Button type="submit" className="w-full bg-primary font-bold text-sm" disabled={!isManagement && selectedGorev.sorumlu.id !== user?.id && selectedGorev.olusturan.id !== user?.id}>DURUMU GÜNCELLE</Button>
+
+                                            {(!isManagement && selectedGorev.sorumlu.id !== user?.id && selectedGorev.olusturan.id !== user?.id) && (
+                                                <p className="text-[9px] text-gray-400 italic text-center">Yetkiniz yok.</p>
+                                            )}
+                                        </form>
+                                    </div>
+                                </div>
+
+                                {/* Separated Settings for Management */}
+                                {isManagement && (
+                                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mt-6">
+                                        <h4 className="font-black text-gray-900 border-b pb-4 mb-4 flex items-center gap-2">
+                                            <Settings className="w-5 h-5" /> GÖREV AYARLARI (DÜZENLEME)
+                                        </h4>
+                                        <form onSubmit={handleSettingsSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            {isLevel9 && (
+                                                <>
+                                                    <div className="col-span-2 space-y-1">
+                                                        <Label>Başlık</Label>
+                                                        <Input value={gorevUpdate.baslik} onChange={e => setGorevUpdate({ ...gorevUpdate, baslik: e.target.value })} className="font-bold" />
+                                                    </div>
+                                                    <div className="col-span-2 space-y-1">
+                                                        <Label>Açıklama</Label>
+                                                        <Textarea value={gorevUpdate.aciklama} onChange={e => setGorevUpdate({ ...gorevUpdate, aciklama: e.target.value })} />
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            <div className="space-y-1">
+                                                <Label>Öncelik</Label>
+                                                <Select value={gorevUpdate.oncelik} onValueChange={(val: any) => setGorevUpdate({ ...gorevUpdate, oncelik: val })}>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="DUSUK">Düşük</SelectItem>
+                                                        <SelectItem value="ORTA">Orta</SelectItem>
+                                                        <SelectItem value="YUKSEK">Yüksek</SelectItem>
+                                                        <SelectItem value="ACIL">Acil</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label>Sorumlu Personel</Label>
+                                                <Select value={gorevUpdate.sorumlu_id} onValueChange={(val) => setGorevUpdate({ ...gorevUpdate, sorumlu_id: val })}>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {personeller.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.ad} {p.soyad}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label>Başlangıç</Label>
+                                                <Input type="date" value={gorevUpdate.baslangic_tarihi} onChange={e => setGorevUpdate({ ...gorevUpdate, baslangic_tarihi: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label>Bitiş</Label>
+                                                <Input type="date" value={gorevUpdate.bitis_tarihi} onChange={e => setGorevUpdate({ ...gorevUpdate, bitis_tarihi: e.target.value })} min={gorevUpdate.baslangic_tarihi} />
+                                            </div>
+
+                                            <div className="col-span-full space-y-2 pt-2 border-t mt-2">
+                                                <Label>Destek Personeli Ekle/Çıkar</Label>
+                                                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                                                    <Select value="" onValueChange={(val) => {
+                                                        const destekList = gorevUpdate.destek_verenler || [];
+                                                        if (!destekList.includes(val)) setGorevUpdate({ ...gorevUpdate, destek_verenler: [...destekList, val] });
+                                                        else setGorevUpdate({ ...gorevUpdate, destek_verenler: destekList.filter(x => x !== val) });
+                                                    }}>
+                                                        <SelectTrigger className="w-[300px] h-9"><SelectValue placeholder="Personel Seç..." /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {personeller.filter(p => p.id.toString() !== gorevUpdate.sorumlu_id).map(p => (
+                                                                <SelectItem key={p.id} value={p.id.toString()}>{(gorevUpdate.destek_verenler || []).includes(p.id.toString()) ? '✓ ' : ''} {p.ad} {p.soyad}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(gorevUpdate.destek_verenler || []).map(id => {
+                                                            const p = personeller.find(x => x.id.toString() === id);
+                                                            if (!p) return null;
+                                                            return (
+                                                                <Badge key={id} variant="secondary" className="cursor-pointer hover:bg-red-100 flex items-center gap-1" onClick={() => setGorevUpdate(prev => ({ ...prev, destek_verenler: (prev.destek_verenler || []).filter(x => x !== id) }))}>
+                                                                    {p.ad} {p.soyad} <XCircle className="w-3 h-3" />
+                                                                </Badge>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="col-span-full pt-4 flex justify-end">
+                                                <Button type="submit" size="lg" className="bg-gray-900 text-white font-bold px-8 shadow-xl hover:bg-black">AYARLARI KAYDET</Button>
+                                            </div>
+                                        </form>
                                     </div>
                                 )}
                             </div>
-
-                            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Left Side: Timeline Feed & Images */}
-                                <div className="space-y-6">
-                                    {/* Images Section */}
-                                    <div className="space-y-2">
-                                        <h4 className="font-black text-gray-900 text-xs uppercase opacity-40">Görsel Kanıtlar & Ekler</h4>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[1, 2, 3].map(i => {
-                                                const url = (selectedGorev as any)[`gorsel_${i} `];
-                                                const note = (selectedGorev as any)[`gorsel_${i} _not`];
-                                                if (!url) return null;
-                                                return (
-                                                    <div key={i} className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden border">
-                                                        <img src={url} alt={`Gorsel ${i} `} className="w-full h-full object-cover" />
-                                                        {note && <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] p-1 truncate">{note}</div>}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Timeline */}
-                                    <h4 className="font-black text-gray-900 flex items-center gap-2 border-b pb-2 pt-2">
-                                        <MessageSquare className="w-4 h-4" /> Süreç Günlüğü
-                                    </h4>
-                                    <div className="max-h-[250px] overflow-y-auto pr-2 space-y-3 custom-scrollbar text-sm">
-                                        {selectedGorev.guncellemeler.map((u, i) => (
-                                            <div key={i} className="bg-white p-3 rounded-lg relative border border-gray-100 shadow-sm">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-black text-primary">{u.personel.ad} {u.personel.soyad}</span>
-                                                    </div>
-                                                    <span className="text-[9px] text-gray-400">{new Date(u.created_at).toLocaleString('tr-TR')}</span>
-                                                </div>
-                                                <p className="text-xs text-gray-600 leading-snug">{u.mesaj}</p>
-                                                {u.gorsel_url && (
-                                                    <img src={u.gorsel_url} alt="Ek" className="mt-2 rounded bg-gray-50 h-20 object-contain border" />
-                                                )}
-                                            </div>
-                                        ))}
-                                        {selectedGorev.guncellemeler.length === 0 && (
-                                            <div className="text-center py-6 opacity-40 text-xs">Henüz işlem kaydı yok.</div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Right Side: Update Form */}
-                                <div className="space-y-4">
-                                    <h4 className="font-black text-gray-900 flex items-center gap-2 border-b pb-2">
-                                        <Settings className="w-4 h-4" /> Durum Yönetimi
-                                    </h4>
-                                    <form onSubmit={handleGorevUpdate} className="space-y-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400">Aksiyon</Label>
-                                            <Select
-                                                value={gorevUpdate.durum}
-                                                onValueChange={(val) => setGorevUpdate({ ...gorevUpdate, durum: val })}
-                                                disabled={!isManagement && selectedGorev.sorumlu.id !== user?.id && selectedGorev.olusturan.id !== user?.id}
-                                            >
-                                                <SelectTrigger className="rounded-xl border-2 font-bold h-10"><SelectValue placeholder={selectedGorev.durum} /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="DEVAM_EDEN">Devam Et / İlerleme Kaydet</SelectItem>
-                                                    <SelectItem value="TAMAMLANDI">Tamamlandı Olarak İşaretle</SelectItem>
-                                                    {isManagement && <SelectItem value="IPTAL">Görevi İptal Et</SelectItem>}
-                                                </SelectContent>
-                                            </Select>
-                                            {(!isManagement && selectedGorev.sorumlu.id !== user?.id && selectedGorev.olusturan.id !== user?.id) && (
-                                                <p className="text-[9px] text-gray-400 italic mt-1">Durum güncelleme yetkiniz yok. Sadece not ekleyebilirsiniz.</p>
-                                            )}
-                                        </div>
-
-                                        {(gorevUpdate.durum === 'TAMAMLANDI' || gorevUpdate.durum === 'IPTAL') && (
-                                            <div className="space-y-1 animate-in fade-in">
-                                                <Label className="text-[10px] font-black uppercase text-gray-400">Sonuç Notu (Zorunlu)</Label>
-                                                <Textarea
-                                                    required
-                                                    className="rounded-xl border-2 min-h-[60px] border-primary/20 bg-primary/5 text-sm"
-                                                    placeholder={gorevUpdate.durum === 'IPTAL' ? 'İptal nedenini belirtiniz...' : 'Tamamlama notu ekleyiniz...'}
-                                                    value={gorevUpdate.tamamlanma_notu}
-                                                    onChange={(e) => setGorevUpdate({ ...gorevUpdate, tamamlanma_notu: e.target.value })}
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400">Süreç Notu / Geri Bildirim ekle</Label>
-                                            <Textarea
-                                                className="rounded-xl border-2 min-h-[80px] text-sm"
-                                                placeholder="İlerleme detayı veya not..."
-                                                value={gorevUpdate.mesaj}
-                                                onChange={(e) => setGorevUpdate({ ...gorevUpdate, mesaj: e.target.value })}
-                                            />
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400">Görsel Kanıt (URL)</Label>
-                                            <Input
-                                                className="h-8 text-xs rounded-lg"
-                                                placeholder="https://..."
-                                                value={gorevUpdate.gorsel_url || ''}
-                                                onChange={(e) => setGorevUpdate({ ...gorevUpdate, gorsel_url: e.target.value })}
-                                            />
-                                        </div>
-
-                                        <Button type="submit" className="w-full bg-primary hover:opacity-90 h-10 rounded-xl font-bold text-xs shadow-md">KAYDET</Button>
-                                    </form>
-
-                                    {selectedGorev.tamamlanma_tarihi && (
-                                        <div className="p-4 bg-green-50 rounded-xl border border-green-100 mt-4">
-                                            <div className="text-xs text-green-800 font-bold mb-1">Bu görev tamamlanmıştır.</div>
-                                            <div className="text-[10px] text-green-600">
-                                                Tarih: {new Date(selectedGorev.tamamlanma_tarihi).toLocaleString('tr-TR')}
-                                                {selectedGorev.tamamlanma_notu && <br />}
-                                                {selectedGorev.tamamlanma_notu && `Not: ${selectedGorev.tamamlanma_notu} `}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                        </>
                     )}
                 </DialogContent>
             </Dialog>

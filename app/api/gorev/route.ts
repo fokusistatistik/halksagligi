@@ -16,14 +16,15 @@ export async function GET(request: Request) {
 
         const user = session.user as any;
         const { searchParams } = new URL(request.url);
-        const targetUserId = searchParams.get('userId');
+        const targetUserIdStr = searchParams.get('userId');
+        const targetUserId = targetUserIdStr ? parseInt(targetUserIdStr) : null;
 
         // Yetki kontrolü: Başkan ve üstü herkesi görebilir, diğerleri sadece kendisiyle ilgili olanları
         const isManagement = user.rol?.seviye >= 9;
 
         let where: any = {};
 
-        if (targetUserId && isManagement) {
+        if (targetUserId && !isNaN(targetUserId) && isManagement) {
             // Yönetici başkasının görevlerini istiyor
             where = {
                 OR: [
@@ -39,8 +40,8 @@ export async function GET(request: Request) {
             // Normal kullanıcı sadece kendi görevlerini görür
             where = {
                 OR: [
-                    { sorumlu_id: user.id },
-                    { olusturan_id: user.id }
+                    { sorumlu_id: parseInt(user.id) },
+                    { olusturan_id: parseInt(user.id) }
                 ]
             };
         }

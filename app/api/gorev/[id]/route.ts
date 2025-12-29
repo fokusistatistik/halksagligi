@@ -16,7 +16,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
         const user = session.user as any;
         const body = await request.json();
-        const gorevId = params.id;
+        const gorevId = parseInt(params.id);
+
+        if (isNaN(gorevId)) {
+            return NextResponse.json({ error: 'Geçersiz görev ID' }, { status: 400 });
+        }
 
         const existingGorev = await prisma.gorev.findUnique({
             where: { id: gorevId },
@@ -46,7 +50,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             await prisma.gorevGuncelleme.create({
                 data: {
                     gorev_id: gorevId,
-                    personel_id: user.id,
+                    personel_id: parseInt(user.id),
                     mesaj: body.mesaj,
                     gorsel_url: body.gorsel_url
                 }
@@ -76,7 +80,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                     await prisma.gorevGuncelleme.create({
                         data: {
                             gorev_id: gorevId,
-                            personel_id: user.id,
+                            personel_id: parseInt(user.id),
                             mesaj: `Görev ${body.durum === 'IPTAL' ? 'iptal edildi' : 'tamamlandı'}. Not: ${body.tamamlanma_notu}`,
                         }
                     });
@@ -86,7 +90,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                 await prisma.gorevGuncelleme.create({
                     data: {
                         gorev_id: gorevId,
-                        personel_id: user.id,
+                        personel_id: parseInt(user.id),
                         mesaj: `Görev durumu değiştirildi: ${existingGorev.durum} -> ${body.durum}`,
                     }
                 });
@@ -106,13 +110,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             if (body.baslik) updateData.baslik = body.baslik;
             if (body.aciklama) updateData.aciklama = body.aciklama;
             if (body.oncelik) updateData.oncelik = body.oncelik;
-            if (body.sorumlu_id) updateData.sorumlu_id = body.sorumlu_id;
+            if (body.sorumlu_id) updateData.sorumlu_id = parseInt(body.sorumlu_id);
             if (body.bitis_tarihi) updateData.bitis_tarihi = new Date(body.bitis_tarihi);
 
             // Destek personellerini güncelle
             if (body.destek_verenler) {
                 updateData.destek_verenler = {
-                    set: body.destek_verenler.map((id: string) => ({ id }))
+                    set: body.destek_verenler.map((id: string) => ({ id: parseInt(id) })).filter((item: any) => !isNaN(item.id))
                 };
             }
         }
@@ -149,7 +153,11 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
         }
 
         const user = session.user as any;
-        const gorevId = params.id;
+        const gorevId = parseInt(params.id);
+
+        if (isNaN(gorevId)) {
+            return NextResponse.json({ error: 'Geçersiz görev ID' }, { status: 400 });
+        }
 
         const existingGorev = await prisma.gorev.findUnique({
             where: { id: gorevId }

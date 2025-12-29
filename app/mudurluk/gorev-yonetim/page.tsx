@@ -211,12 +211,14 @@ export default function GorevYonetimPage() {
     const handleGorevSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            console.log('Sending gorev data:', newGorev); // Debug log
             const res = await fetch('/api/gorev', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newGorev)
             });
             const data = await res.json();
+            console.log('API Response:', data); // Debug log
             if (data.success) {
                 toast.success('Görev başarıyla oluşturuldu');
                 setIsGorevModalOpen(false);
@@ -236,9 +238,11 @@ export default function GorevYonetimPage() {
                 });
                 fetchData();
             } else {
+                console.error('API Error:', data.error); // Debug log
                 toast.error(data.error || 'Hata oluştu');
             }
         } catch (_error) {
+            console.error('Fetch error:', _error); // Debug log
             toast.error('Bağlantı hatası');
         }
     };
@@ -816,7 +820,7 @@ export default function GorevYonetimPage() {
                                 <Select value={newGorev.sorumlu_id} onValueChange={(val) => setNewGorev({ ...newGorev, sorumlu_id: val })}>
                                     <SelectTrigger><SelectValue placeholder="Personel seçin" /></SelectTrigger>
                                     <SelectContent>
-                                        {personeller.map(p => <SelectItem key={p.id} value={p.id}>{p.ad} {p.soyad} - {p.unvan}</SelectItem>)}
+                                        {personeller.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.ad} {p.soyad} - {p.unvan}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

@@ -118,6 +118,40 @@ export async function POST(request: Request) {
 
         const newKod = `${prefix}${nextSeq.toString().padStart(6, '0')}`;
 
+        // Validate required fields
+        if (!body.sorumlu_id) {
+            return NextResponse.json({ success: false, error: 'Sorumlu personel seçilmedi' }, { status: 400 });
+        }
+
+        const sorumluId = parseInt(body.sorumlu_id);
+        const olusturanId = parseInt(user.id);
+
+        // birim_id can be null/undefined for some users
+        let birimId: number | null = null;
+        if (body.birim_id) {
+            birimId = parseInt(body.birim_id);
+        } else if (user.birim_id) {
+            birimId = parseInt(user.birim_id);
+        }
+
+        // Debug logging
+        console.log('ID Conversion Debug:', {
+            'body.sorumlu_id': body.sorumlu_id,
+            'user.id': user.id,
+            'user.birim_id': user.birim_id,
+            'body.birim_id': body.birim_id,
+            'sorumluId': sorumluId,
+            'olusturanId': olusturanId,
+            'birimId': birimId,
+            'sorumluId isNaN': isNaN(sorumluId),
+            'olusturanId isNaN': isNaN(olusturanId),
+            'birimId isNaN': birimId !== null && isNaN(birimId)
+        });
+
+        if (isNaN(sorumluId) || isNaN(olusturanId) || (birimId !== null && isNaN(birimId))) {
+            return NextResponse.json({ success: false, error: 'Geçersiz ID değerleri' }, { status: 400 });
+        }
+
         const gorev = await prisma.gorev.create({
             data: {
                 kod: newKod,
@@ -129,9 +163,9 @@ export async function POST(request: Request) {
                 is_suresiz: body.is_suresiz || false,
                 baslangic_tarihi: body.baslangic_tarihi ? new Date(body.baslangic_tarihi) : null,
                 bitis_tarihi: body.bitis_tarihi ? new Date(body.bitis_tarihi) : null,
-                sorumlu_id: parseInt(body.sorumlu_id),
-                olusturan_id: parseInt(user.id),
-                birim_id: body.birim_id ? parseInt(body.birim_id) : parseInt(user.birim_id),
+                sorumlu_id: sorumluId,
+                olusturan_id: olusturanId,
+                birim_id: birimId,
                 gorsel_1: body.gorsel_1,
                 gorsel_1_not: body.gorsel_1_not,
                 gorsel_2: body.gorsel_2,
@@ -139,7 +173,10 @@ export async function POST(request: Request) {
                 gorsel_3: body.gorsel_3,
                 gorsel_3_not: body.gorsel_3_not,
                 destek_verenler: {
-                    connect: body.destek_verenler?.map((id: string) => ({ id: parseInt(id) })) || []
+                    connect: body.destek_verenler?.map((id: string) => {
+                        const parsedId = parseInt(id);
+                        return isNaN(parsedId) ? null : { id: parsedId };
+                    }).filter(Boolean) || []
                 }
             },
             include: {

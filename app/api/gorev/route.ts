@@ -129,9 +129,9 @@ export async function POST(request: Request) {
                 is_suresiz: body.is_suresiz || false,
                 baslangic_tarihi: body.baslangic_tarihi ? new Date(body.baslangic_tarihi) : null,
                 bitis_tarihi: body.bitis_tarihi ? new Date(body.bitis_tarihi) : null,
-                sorumlu_id: body.sorumlu_id,
-                olusturan_id: user.id,
-                birim_id: body.birim_id || user.birim_id,
+                sorumlu_id: parseInt(body.sorumlu_id),
+                olusturan_id: parseInt(user.id),
+                birim_id: body.birim_id ? parseInt(body.birim_id) : parseInt(user.birim_id),
                 gorsel_1: body.gorsel_1,
                 gorsel_1_not: body.gorsel_1_not,
                 gorsel_2: body.gorsel_2,
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
                 gorsel_3: body.gorsel_3,
                 gorsel_3_not: body.gorsel_3_not,
                 destek_verenler: {
-                    connect: body.destek_verenler?.map((id: string) => ({ id })) || []
+                    connect: body.destek_verenler?.map((id: string) => ({ id: parseInt(id) })) || []
                 }
             },
             include: {
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
         // Aktivite logu ekle
         await prisma.aktiviteLog.create({
             data: {
-                personel_id: user.id,
+                personel_id: parseInt(user.id),
                 personel_email: user.email,
                 islem: 'gorev.olustur',
                 tablo: 'gorevler',
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
         await prisma.gorevGuncelleme.create({
             data: {
                 gorev_id: gorev.id,
-                personel_id: user.id,
+                personel_id: parseInt(user.id),
                 mesaj: `Görev oluşturuldu. Kod: ${newKod}. ${body.notlar ? `Not: ${body.notlar}` : ''}`,
             }
         });

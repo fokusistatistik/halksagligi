@@ -520,7 +520,10 @@ export default function GorevYonetimPage() {
                             color = 'text-green-600 bg-green-50 border-green-100';
                             icon = <CheckCircle2 className="w-4 h-4" />;
                         } else {
-                            count = gorevler.filter(g => g.bitis_tarihi && new Date(g.bitis_tarihi) < new Date() && g.durum !== 'TAMAMLANDI' && g.durum !== 'IPTAL').length;
+                            // Geciken: Bitiş tarihi bugünden ÖNCE olan görevler (bugün dahil değil)
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0); // Bugünün başlangıcı
+                            count = gorevler.filter(g => g.bitis_tarihi && new Date(g.bitis_tarihi) < today && g.durum !== 'TAMAMLANDI' && g.durum !== 'IPTAL').length;
                             color = 'text-red-600 bg-red-50 border-red-100';
                             icon = <AlertCircle className="w-4 h-4" />;
                         }
@@ -593,10 +596,12 @@ export default function GorevYonetimPage() {
                                         return ['TAMAMLANDI', 'IPTAL'].includes(g.durum);
                                     })
                                     .sort((a, b) => {
-                                        const isLateA = a.bitis_tarihi && new Date(a.bitis_tarihi) < new Date() && a.durum !== 'TAMAMLANDI';
-                                        const isLateB = b.bitis_tarihi && new Date(b.bitis_tarihi) < new Date() && b.durum !== 'TAMAMLANDI';
-                                        if (isLateA && !isLateB) return -1;
-                                        if (!isLateA && isLateB) return 1;
+                                        // Geciken: Bitiş tarihi bugünden ÖNCE
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        const isLateA = a.bitis_tarihi && new Date(a.bitis_tarihi) < today && a.durum !== 'TAMAMLANDI';
+                                        const isLateB = b.bitis_tarihi && new Date(b.bitis_tarihi) < today && b.durum !== 'TAMAMLANDI';
+                                        if (isLateA !== isLateB) return isLateA ? -1 : 1;
                                         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
                                     })
                                     .map(gorev => {

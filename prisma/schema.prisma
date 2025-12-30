@@ -306,6 +306,7 @@ model Gorev {
   // TAMAMLANMA BİLGİLERİ
   tamamlayan_id     Int?
   tamamlayan        Personel? @relation("TamamlayanPersonel", fields: [tamamlayan_id], references: [id])
+  tamamlanma_tarihi DateTime?
   tamamlanma_notu   String?
 
   // GÖRSELLER VE NOTLARI

@@ -1406,11 +1406,11 @@ export default function GorevYonetimPage() {
 
                                 {/* Separated Settings for Management */}
                                 {isManagement && (
-                                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mt-6">
-                                        <h4 className="font-black text-gray-900 border-b pb-4 mb-4 flex items-center gap-2">
-                                            <Settings className="w-5 h-5" /> GÖREV AYARLARI (DÜZENLEME)
+                                    <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm mt-4">
+                                        <h4 className="font-black text-gray-900 border-b pb-2 mb-3 flex items-center gap-2 text-xs">
+                                            <Settings className="w-4 h-4" /> GÖREV AYARLARI (DÜZENLEME)
                                         </h4>
-                                        <form onSubmit={handleSettingsSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <form onSubmit={handleSettingsSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                                             {isLevel9 && (
                                                 <>
                                                     <div className="col-span-2 space-y-1">

@@ -107,14 +107,32 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
         // Sadece sahip veya yönetici ana detayları değiştirebilir
         if (isOwner || isManagement) {
-            if (body.baslik) updateData.baslik = body.baslik;
-            if (body.aciklama) updateData.aciklama = body.aciklama;
-            if (body.oncelik) updateData.oncelik = body.oncelik;
-            if (body.sorumlu_id) updateData.sorumlu_id = parseInt(body.sorumlu_id);
-            if (body.baslangic_tarihi) updateData.baslangic_tarihi = new Date(body.baslangic_tarihi);
+            const changes: string[] = [];
+
+            if (body.baslik && body.baslik !== existingGorev.baslik) {
+                updateData.baslik = body.baslik;
+                changes.push(`Başlık değiştirildi`);
+            }
+            if (body.aciklama && body.aciklama !== existingGorev.aciklama) {
+                updateData.aciklama = body.aciklama;
+                changes.push(`Açıklama güncellendi`);
+            }
+            if (body.oncelik && body.oncelik !== existingGorev.oncelik) {
+                updateData.oncelik = body.oncelik;
+                changes.push(`Öncelik: ${existingGorev.oncelik} → ${body.oncelik}`);
+            }
+            if (body.sorumlu_id && parseInt(body.sorumlu_id) !== existingGorev.sorumlu_id) {
+                updateData.sorumlu_id = parseInt(body.sorumlu_id);
+                changes.push(`Sorumlu değiştirildi`);
+            }
+            if (body.baslangic_tarihi) {
+                updateData.baslangic_tarihi = new Date(body.baslangic_tarihi);
+                changes.push(`Başlangıç tarihi güncellendi`);
+            }
 
             if (body.bitis_tarihi !== undefined) {
                 updateData.bitis_tarihi = body.bitis_tarihi ? new Date(body.bitis_tarihi) : null;
+                changes.push(`Bitiş tarihi güncellendi`);
             }
 
             // Destek personellerini güncelle
@@ -122,6 +140,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                 updateData.destek_verenler = {
                     set: body.destek_verenler.map((id: string) => ({ id: parseInt(id) })).filter((item: any) => !isNaN(item.id))
                 };
+                changes.push(`Destek personelleri güncellendi`);
+            }
+
+            // Eğer ayar değişikliği varsa log ekle
+            if (changes.length > 0) {
+                await prisma.gorevGuncelleme.create({
+                    data: {
+                        gorev_id: gorevId,
+                        personel_id: parseInt(user.id),
+                        mesaj: `Görev ayarları güncellendi: ${changes.join(', ')}`,
+                    }
+                });
             }
         }
 

@@ -19,8 +19,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: 'Geçersiz ID' },
+        { status: 400 }
+      );
+    }
+
     const veriGiris = await prisma.sHMVeriGiris.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         birim: {
           select: {
@@ -62,11 +70,19 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: 'Geçersiz ID' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const validated = updateSchema.parse(body);
 
     const mevcutKayit = await prisma.sHMVeriGiris.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!mevcutKayit) {
@@ -87,7 +103,7 @@ export async function PUT(
     const user = await getCurrentUser();
 
     const updated = await prisma.sHMVeriGiris.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...validated,
         veri: validated.veri as any,
@@ -112,7 +128,7 @@ export async function PUT(
       personel_email: user?.email,
       islem: 'veri_giris.guncelle',
       tablo: 'shm_veri_giris',
-      kayit_id: params.id,
+      kayit_id: id.toString(),
       aciklama: `Veri girişi güncellendi: ${new Date(mevcutKayit.tarih).toLocaleDateString('tr-TR')}`
     });
 
@@ -145,8 +161,16 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: 'Geçersiz ID' },
+        { status: 400 }
+      );
+    }
+
     const mevcutKayit = await prisma.sHMVeriGiris.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!mevcutKayit) {
@@ -167,7 +191,7 @@ export async function DELETE(
     const user = await getCurrentUser();
 
     await prisma.sHMVeriGiris.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     // Aktivite logu
@@ -176,7 +200,7 @@ export async function DELETE(
       personel_email: user?.email,
       islem: 'veri_giris.sil',
       tablo: 'shm_veri_giris',
-      kayit_id: params.id,
+      kayit_id: id.toString(),
       aciklama: `Veri girişi silindi: ${new Date(mevcutKayit.tarih).toLocaleDateString('tr-TR')}`
     });
 

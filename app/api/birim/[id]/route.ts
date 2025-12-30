@@ -12,8 +12,13 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const id = parseInt(params.id)
+    if (isNaN(id)) {
+      return NextResponse.json({ error: 'Geçersiz ID' }, { status: 400 })
+    }
+
     const birim = await prisma.birim.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         ust_birim: true,
         alt_birimler: true,

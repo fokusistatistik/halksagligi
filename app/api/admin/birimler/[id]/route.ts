@@ -11,7 +11,7 @@ const birimUpdateSchema = z.object({
   kod: z.string().min(2, 'Birim kodu en az 2 karakter olmalıdır').toUpperCase().optional(),
   tip: z.enum(['MUDURLUK', 'DIS_BIRIM']).optional(),
   dis_birim_tip: z.enum(['ASM', 'HSM', 'VSD', 'ILCE_SAGLIK']).optional().nullable(),
-  ust_birim_id: z.string().uuid().optional().nullable(),
+  ust_birim_id: z.number().int().positive().optional().nullable(),
   telefon: z.string().optional().nullable(),
   email: z.string().email('Geçerli bir email giriniz').optional().or(z.literal('')).nullable(),
   adres: z.string().optional().nullable(),
@@ -41,8 +41,16 @@ export async function GET(
       );
     }
 
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Geçersiz ID' },
+        { status: 400 }
+      );
+    }
+
     const birim = await prisma.birim.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         ust_birim: {
           select: {
@@ -114,8 +122,16 @@ export async function PUT(
     }
 
     // Mevcut birim kontrolü
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Geçersiz ID' },
+        { status: 400 }
+      );
+    }
+
     const mevcutBirim = await prisma.birim.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!mevcutBirim) {
@@ -144,7 +160,7 @@ export async function PUT(
 
     // Birim güncelle
     const guncellenmis = await prisma.birim.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(validated.ad && { ad: validated.ad }),
         ...(validated.kod && { kod: validated.kod }),
@@ -164,7 +180,7 @@ export async function PUT(
       personel_email: session.user.email ?? undefined,
       islem: 'birim.guncelle',
       tablo: 'birimler',
-      kayit_id: guncellenmis.id,
+      kayit_id: guncellenmis.id.toString(),
       aciklama: `Birim güncellendi: ${guncellenmis.ad}`
     });
 
@@ -239,8 +255,16 @@ export async function DELETE(
     }
 
     // Mevcut birim kontrolü
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Geçersiz ID' },
+        { status: 400 }
+      );
+    }
+
     const mevcutBirim = await prisma.birim.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -267,7 +291,7 @@ export async function DELETE(
 
     // Birimi sil (cascade ile alt birimler de silinecek)
     await prisma.birim.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     // Activity log
@@ -276,7 +300,7 @@ export async function DELETE(
       personel_email: session.user.email ?? undefined,
       islem: 'birim.sil',
       tablo: 'birimler',
-      kayit_id: params.id,
+      kayit_id: id.toString(),
       aciklama: `Birim silindi: ${mevcutBirim.ad}`
     });
 

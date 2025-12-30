@@ -1,7 +1,7 @@
 import { prisma } from './prisma'
 
 export interface LogActivityParams {
-  personel_id?: string
+  personel_id?: number
   personel_email?: string
   islem: string
   tablo: string

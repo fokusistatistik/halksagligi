@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { LogOut, Bell, ChevronDown, BarChart3, Building2, HeartPulse, MapPin, Settings as SettingsIcon } from 'lucide-react';
+import { LogOut, Bell, ChevronDown, BarChart3, Building2, HeartPulse, MapPin, Settings as SettingsIcon, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Modül menüsü
@@ -21,6 +21,7 @@ export default function SiteHeader() {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showModulesMenu, setShowModulesMenu] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     // Don't show on public/auth pages
     if (
@@ -44,33 +45,34 @@ export default function SiteHeader() {
     return (
         <>
             <header className="sticky top-0 z-40 w-full border-b bg-white shadow-sm">
-                <div className="container flex h-14 md:h-16 items-center justify-between px-3 sm:px-6 lg:px-8">
-                    <div className="flex items-center gap-3 md:gap-6">
-                        <Link href="/" className="flex items-center gap-1 md:gap-2">
+                <div className="mx-auto max-w-[1920px] flex h-14 md:h-16 items-center justify-between px-2 sm:px-4 lg:px-6 xl:px-8">
+                    {/* Left Section - Logos */}
+                    <div className="flex items-center gap-2 md:gap-3 lg:gap-4 min-w-0">
+                        <Link href="/" className="flex items-center gap-1 md:gap-2 shrink-0">
                             <img
                                 src="https://static.fokusistatistik.com/resimler/kism.png"
                                 alt="Kocaeli İSM"
-                                className="h-9 md:h-12 w-auto"
+                                className="h-8 md:h-10 lg:h-12 w-auto"
                             />
-                            <span className="text-gray-300 mx-1 md:mx-2 hidden sm:inline">|</span>
+                            <span className="text-gray-300 mx-0.5 md:mx-1 hidden sm:inline">|</span>
                             <img
                                 src="https://static.fokusistatistik.com/halksagligi/genel/asyalogo2.png"
                                 alt="ASYA"
-                                className="h-9 md:h-12 w-auto"
+                                className="h-8 md:h-10 lg:h-12 w-auto"
                             />
-                            <span className="text-gray-300 mx-1 md:mx-2 hidden sm:inline">|</span>
+                            <span className="text-gray-300 mx-0.5 md:mx-1 hidden sm:inline">|</span>
                             <img
                                 src="https://static.fokusistatistik.com/resimler/saha.jpg"
                                 alt="SAHA"
-                                className="h-8 md:h-10 w-auto rounded-md"
+                                className="h-7 md:h-9 lg:h-10 w-auto rounded-md"
                             />
                         </Link>
 
                         {/* Desktop Navigation */}
-                        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+                        <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-sm font-medium ml-4 xl:ml-8">
                             <Link
                                 href="/"
-                                className={`transition-colors hover:text-primary ${pathname === '/' ? 'text-primary' : 'text-gray-600'
+                                className={`transition-colors hover:text-primary whitespace-nowrap ${pathname === '/' ? 'text-primary' : 'text-gray-600'
                                     }`}
                             >
                                 Ana Sayfa
@@ -79,7 +81,7 @@ export default function SiteHeader() {
                             {session?.user?.rol?.kod === 'ADMIN' && (
                                 <Link
                                     href="/mudurluk/gorev-yonetim"
-                                    className={`transition-colors hover:text-primary ${pathname.startsWith('/mudurluk/gorev-yonetim') ? 'text-primary' : 'text-gray-600'
+                                    className={`transition-colors hover:text-primary whitespace-nowrap ${pathname.startsWith('/mudurluk/gorev-yonetim') ? 'text-primary' : 'text-gray-600'
                                         }`}
                                 >
                                     Görev Yönetimi
@@ -90,7 +92,7 @@ export default function SiteHeader() {
                             <div className="relative">
                                 <button
                                     onClick={() => setShowModulesMenu(!showModulesMenu)}
-                                    className="flex items-center gap-1 transition-colors hover:text-primary text-gray-600"
+                                    className="flex items-center gap-1 transition-colors hover:text-primary text-gray-600 whitespace-nowrap"
                                 >
                                     Modüller
                                     <ChevronDown className={`h-4 w-4 transition-transform ${showModulesMenu ? 'rotate-180' : ''}`} />
@@ -126,7 +128,7 @@ export default function SiteHeader() {
                             {session?.user?.rol?.kod === 'ADMIN' && (
                                 <Link
                                     href="/admin"
-                                    className={`transition-colors hover:text-primary ${pathname.startsWith('/admin') ? 'text-primary' : 'text-gray-600'
+                                    className={`transition-colors hover:text-primary whitespace-nowrap ${pathname.startsWith('/admin') ? 'text-primary' : 'text-gray-600'
                                         }`}
                                 >
                                     Yönetim
@@ -135,24 +137,36 @@ export default function SiteHeader() {
                         </nav>
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-4">
+                    {/* Right Section - User Info & Actions */}
+                    <div className="flex items-center gap-1 md:gap-2 lg:gap-3 xl:gap-4 shrink-0">
+                        {/* Mobile Menu Button */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="lg:hidden"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        >
+                            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        </Button>
+
+                        {/* Notifications */}
                         <Button variant="ghost" size="icon" className="hidden sm:flex text-gray-500 hover:text-gray-700">
                             <Bell className="h-5 w-5" />
                             <span className="sr-only">Bildirimler</span>
                         </Button>
 
-                        <div className="hidden md:flex items-center gap-3 border-l pl-4 relative">
-                            {/* User Menu Trigger */}
+                        {/* Desktop User Menu */}
+                        <div className="hidden lg:flex items-center gap-2 xl:gap-3 border-l pl-2 xl:pl-4 relative">
                             <button
                                 onClick={() => setShowUserMenu(!showUserMenu)}
-                                className="flex items-center gap-3 group"
+                                className="flex items-center gap-2 xl:gap-3 group"
                             >
                                 <img
                                     src={userPhotoUrl}
                                     alt={user?.name || 'Kullanıcı'}
-                                    className="h-10 w-10 rounded-full border-2 border-gray-200 object-cover group-hover:border-primary transition-colors"
+                                    className="h-9 w-9 xl:h-10 xl:w-10 rounded-full border-2 border-gray-200 object-cover group-hover:border-primary transition-colors"
                                 />
-                                <div className="flex flex-col items-start">
+                                <div className="hidden xl:flex flex-col items-start">
                                     <span className="text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">
                                         {user?.name}
                                     </span>
@@ -191,14 +205,104 @@ export default function SiteHeader() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Mobile User Avatar */}
+                        <button
+                            onClick={() => setShowUserMenu(!showUserMenu)}
+                            className="lg:hidden"
+                        >
+                            <img
+                                src={userPhotoUrl}
+                                alt={user?.name || 'Kullanıcı'}
+                                className="h-9 w-9 rounded-full border-2 border-gray-200 object-cover"
+                            />
+                        </button>
                     </div>
                 </div>
+
+                {/* Mobile Menu */}
+                {mobileMenuOpen && (
+                    <div className="lg:hidden border-t bg-white">
+                        <nav className="px-4 py-3 space-y-1">
+                            <Link
+                                href="/"
+                                className={`block px-3 py-2 rounded-md text-sm font-medium ${pathname === '/' ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:bg-gray-50'
+                                    }`}
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Ana Sayfa
+                            </Link>
+
+                            {session?.user?.rol?.kod === 'ADMIN' && (
+                                <Link
+                                    href="/mudurluk/gorev-yonetim"
+                                    className={`block px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/mudurluk/gorev-yonetim') ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    Görev Yönetimi
+                                </Link>
+                            )}
+
+                            <div className="pt-2 pb-1">
+                                <div className="text-xs font-semibold text-gray-400 px-3 mb-1">MODÜLLER</div>
+                                {MODULES.map((module) => (
+                                    <Link
+                                        key={module.name}
+                                        href={module.href}
+                                        className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                    >
+                                        <module.icon className="h-4 w-4" />
+                                        <span>{module.name}</span>
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 ml-auto">
+                                            {module.status}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+
+                            {session?.user?.rol?.kod === 'ADMIN' && (
+                                <Link
+                                    href="/admin"
+                                    className={`block px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/admin') ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    Yönetim
+                                </Link>
+                            )}
+
+                            <hr className="my-2" />
+
+                            <Link
+                                href="/settings"
+                                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                <SettingsIcon className="h-4 w-4" />
+                                Ayarlar
+                            </Link>
+
+                            <button
+                                onClick={() => {
+                                    setMobileMenuOpen(false);
+                                    handleLogout();
+                                }}
+                                className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50"
+                            >
+                                <LogOut className="h-4 w-4" />
+                                Çıkış Yap
+                            </button>
+                        </nav>
+                    </div>
+                )}
             </header>
 
             {/* Logout Confirmation Modal */}
             {showLogoutConfirm && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Çıkış Yap</h3>
                         <p className="text-gray-600 mb-6">
                             Sistemden çıkış yapmak istediğinizden emin misiniz?

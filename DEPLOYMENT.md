@@ -1,366 +1,259 @@
-# Deployment Guide - Kocaeli İSM Görev Yönetim Sistemi
+# 🚀 Deployment Guide - Kocaeli Halk Sağlığı Yönetim Sistemi
 
-## Test Environment Deployment (test.fokusistatistik.com)
+## 📋 Ön Gereksinimler
 
-### Pre-deployment Checklist
+- Node.js 18.17.0 veya üzeri
+- npm 9.0.0 veya üzeri
+- Git
 
-- [ ] Database backup yapıldı
-- [ ] Environment variables hazırlandı (.env dosyası)
-- [ ] n8n webhook endpoints test edildi
-- [ ] Build test yapıldı (npm run build)
-- [ ] Prisma migrations hazır
-- [ ] Admin credentials belirlendi
+## 🔧 Kurulum Adımları
 
-### Environment Variables
-
-Aşağıdaki environment variables dosyayı `.env.example`'dan `.env`'ye kopyalayarak oluşturun:
+### 1. Repository'yi Klonlayın
 
 ```bash
-cp .env.example .env
+git clone <repository-url>
+cd halksagligi
 ```
 
-**MUTLAKA DEĞİŞTİRİLMESİ GEREKENLER:**
-
-```bash
-# Database (SQLite for Management)
-DATABASE_URL="file:/var/lib/halksagligi/prod.db"
-
-# NextAuth
-NEXTAUTH_SECRET="<openssl rand -base64 32 ile üret>"
-NEXTAUTH_URL="https://test.fokusistatistik.com"
-
-# JWT
-JWT_SECRET="<openssl rand -base64 32 ile üret>"
-
-# n8n Webhook (Operational Data)
-N8N_WEBHOOK_URL="https://n8n.fokusistatistik.com"
-
-# App URL
-NEXT_PUBLIC_APP_URL="https://test.fokusistatistik.com"
-NODE_ENV="production"
-```
-
-### Installation Steps
-
-#### 1. Dependencies Kurulumu
+### 2. Bağımlılıkları Yükleyin
 
 ```bash
 npm install
 ```
 
-#### 2. Database Setup (SQLite)
+### 3. Environment Dosyasını Yapılandırın
 
 ```bash
-# Prisma client oluştur
+# .env.example dosyasını kopyalayın
+cp .env.example .env
+
+# .env dosyasını düzenleyin
+```
+
+**.env Dosyası İçeriği:**
+
+```env
+# Database
+DATABASE_URL="file:./prisma/dev.db"
+
+# NextAuth
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-super-secret-key-change-this-in-production"
+
+# App URL
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# N8N Webhook (Opsiyonel)
+N8N_WEBHOOK_URL="https://n8n.fokusistatistik.com"
+```
+
+### 4. Database Kurulumu
+
+#### Seçenek A: Backup'tan Restore (Önerilen)
+
+```bash
+# Backup dosyasını kopyalayın
+cp database-backup/dev-backup-2025-12-30.db prisma/dev.db
+
+# Prisma Client'ı oluşturun
 npx prisma generate
-
-# Database push (SQLite için migrate yerine)
-npx prisma db push
-
-# Seed data (ilk kurulum için)
-npx prisma db seed
 ```
 
-**NOT:** Seed işlemi aşağıdaki verileri oluşturur:
-- 6 rol (ADMIN, BASKAN, ANALIST, BIRIM_YONETICISI, PERSONEL, MISAFIR)
-- 43 yetki (tüm kategoriler)
-- Admin kullanıcı (Email: admin@saglik.gov.tr, Şifre: admin123)
-- Test birimleri
-- Görev ve Takvim modelleri (Gorev, GorevGuncelleme, TakvimEtkinlik)
-
-#### 3. Build
+#### Seçenek B: Sıfırdan Kurulum
 
 ```bash
-# .next klasörünü temizle
-rm -rf .next
+# Migration'ları çalıştırın
+npx prisma migrate deploy
 
-# Production build (TypeScript hataları ignore edilir)
-NODE_ENV=production npm run build
+# Seed verilerini yükleyin
+npm run db:seed
+
+# Prisma Client'ı oluşturun
+npx prisma generate
 ```
 
-Build işlemi başarılı olmalı. `next.config.mjs` içinde `ignoreBuildErrors: true` ayarı aktif.
+### 5. Uygulamayı Başlatın
 
-#### 4. Start Production Server
-
-**Option A: PM2 ile (Önerilen)**
+#### Development Modu:
 
 ```bash
-# PM2 yükle (global)
-npm install -g pm2
-
-# Uygulamayı başlat
-pm2 start npm --name "halksagligi" -- start
-
-# Otomatik restart ayarla
-pm2 startup
-pm2 save
+npm run dev
 ```
 
-**Option B: Docker ile**
+Uygulama http://localhost:3000 adresinde çalışacaktır.
+
+#### Production Build:
 
 ```bash
-# Docker image build
-docker build -t halksagligi:latest .
+# Build oluşturun
+npm run build
 
-# Container çalıştır
-docker run -d \
-  --name halksagligi \
-  -p 3000:3000 \
-  --env-file .env \
-  halksagligi:latest
-```
-
-**Option C: Standalone**
-
-```bash
+# Production modunda başlatın
 npm start
 ```
 
-### Post-deployment Verification
+## 🔐 İlk Giriş
 
-#### 1. Health Check
+**Demo Kullanıcılar (Şifre: admin123)**
 
-```bash
-curl https://test.fokusistatistik.com
-```
+1. **Sistem Yöneticisi**
+   - TC: `11111111111`
+   - Email: admin@saglik.gov.tr
 
-Ana sayfa yüklenmeli ve login sayfasına redirect etmeli.
+2. **Başkan**
+   - TC: `22222222222`
 
-#### 2. Database Connection
+3. **Birim Yöneticisi**
+   - TC: `33333333333`
 
-```bash
-curl https://test.fokusistatistik.com/api/health
-```
+## 🌐 Production Deployment
 
-(Not: Health check endpoint eklenirse)
+### Vercel Deployment
 
-#### 3. Login Test
-
-- URL: `https://test.fokusistatistik.com/login`
-- TC: `17422776208`
-- Şifre: `Eb0302174.`
-
-Başarılı giriş yapabilmeli.
-
-#### 4. Webhook Test
-
-Login yaptıktan sonra n8n'de aşağıdaki webhook'ların tetiklendiğini kontrol edin:
-- `/webhook/login` - Login proxy
-- `/webhook/login-success` - Başarılı giriş detayları
-
-### Nginx Configuration (Reverse Proxy)
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name test.fokusistatistik.com;
-
-    ssl_certificate /path/to/ssl/cert.pem;
-    ssl_certificate_key /path/to/ssl/key.pem;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-
-        # Timeout settings
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-}
-```
-
-### n8n Webhook Setup
-
-n8n'de aşağıdaki webhook'ları oluşturun:
-
-#### Authentication Webhooks
-
-1. **Login Proxy** - `/webhook/login`
-   - Method: POST
-   - Response: Personel bilgileri + token
-
-2. **Login Success** - `/webhook/login-success`
-   - Method: POST
-   - Payload includes full auth details
-
-#### SHM Webhooks
-
-3. **SHM Veri Giriş** - `/webhook/shm-veri-giris`
-   - Method: POST
-   - Payload: veri_giris + full auth
-
-4. **SHM Veri Güncelle** - `/webhook/shm-veri-guncelle`
-   - Method: POST
-
-5. **SHM Veri Sil** - `/webhook/shm-veri-sil`
-   - Method: POST
-
-6. **SHM Veri Onay** - `/webhook/shm-veri-onay`
-   - Method: POST
-
-#### Birim Webhooks
-
-7. **Birim Oluştur** - `/webhook/birim-olustur`
-   - Method: POST
-
-8. **Birim Güncelle** - `/webhook/birim-guncelle`
-   - Method: POST
-
-9. **Birim Sil** - `/webhook/birim-sil`
-   - Method: POST
-
-### Monitoring
-
-#### PM2 Monitoring
+1. **Vercel'e Deploy:**
 
 ```bash
-# Process listesi
-pm2 list
+# Vercel CLI yükleyin
+npm i -g vercel
 
-# Logları göster
-pm2 logs halksagligi
-
-# Restart
-pm2 restart halksagligi
-
-# Stop
-pm2 stop halksagligi
+# Deploy edin
+vercel
 ```
 
-#### Database Monitoring
+2. **Environment Variables:**
+
+Vercel dashboard'da aşağıdaki değişkenleri ekleyin:
+- `DATABASE_URL`
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET`
+- `NEXT_PUBLIC_APP_URL`
+
+### Docker Deployment
 
 ```bash
-# Prisma Studio (development only)
+# Docker image oluşturun
+docker build -t halksagligi .
+
+# Container'ı çalıştırın
+docker run -p 3000:3000 halksagligi
+```
+
+## 📊 Database Yönetimi
+
+### Prisma Studio (Database GUI)
+
+```bash
+npm run db:studio
+```
+
+### Migration Oluşturma
+
+```bash
+npx prisma migrate dev --name migration_name
+```
+
+### Database Reset
+
+```bash
+npx prisma migrate reset
+npm run db:seed
+```
+
+## 🔄 Güncelleme
+
+```bash
+# Son değişiklikleri çekin
+git pull origin main
+
+# Bağımlılıkları güncelleyin
+npm install
+
+# Migration'ları çalıştırın
+npx prisma migrate deploy
+
+# Prisma Client'ı yeniden oluşturun
+npx prisma generate
+
+# Uygulamayı yeniden başlatın
+npm run build
+npm start
+```
+
+## 🛡️ Güvenlik
+
+### Production Checklist:
+
+- [ ] `NEXTAUTH_SECRET` değerini güçlü bir değerle değiştirin
+- [ ] Demo kullanıcıların şifrelerini değiştirin veya silin
+- [ ] HTTPS kullanın
+- [ ] CORS ayarlarını yapılandırın
+- [ ] Rate limiting ekleyin
+- [ ] Database backup stratejisi oluşturun
+- [ ] Log monitoring ayarlayın
+
+### NEXTAUTH_SECRET Oluşturma:
+
+```bash
+openssl rand -base64 32
+```
+
+## 📁 Proje Yapısı
+
+```
+halksagligi/
+├── app/                    # Next.js App Router
+│   ├── api/               # API Routes
+│   ├── auth/              # Authentication pages
+│   └── mudurluk/          # Main application pages
+├── components/            # React components
+├── lib/                   # Utility functions
+├── prisma/               # Database schema & migrations
+│   ├── schema.prisma     # Database schema
+│   ├── seed.ts           # Seed data
+│   └── dev.db            # SQLite database
+├── public/               # Static files
+└── database-backup/      # Database backups
+```
+
+## 🔧 Sorun Giderme
+
+### Database bağlantı hatası:
+
+```bash
+# Prisma Client'ı yeniden oluşturun
+npx prisma generate
+
+# Database'i kontrol edin
 npx prisma studio
 ```
 
-### Backup Strategy
-
-#### Database Backup
+### Build hatası:
 
 ```bash
-# PostgreSQL backup
-pg_dump -h HOST -U USER -d DATABASE > backup_$(date +%Y%m%d_%H%M%S).sql
-
-# Restore
-psql -h HOST -U USER -d DATABASE < backup_YYYYMMDD_HHMMSS.sql
-```
-
-#### Application Backup
-
-```bash
-# Code + environment
-tar -czf app_backup_$(date +%Y%m%d).tar.gz \
-  --exclude=node_modules \
-  --exclude=.next \
-  --exclude=.git \
-  .
-```
-
-### Troubleshooting
-
-#### Build Failures
-
-```bash
-# Clean install
-rm -rf node_modules package-lock.json .next
-npm install
+# Cache'i temizleyin
+rm -rf .next
 npm run build
 ```
 
-#### Database Connection Issues
+### Port zaten kullanımda:
 
 ```bash
-# Test connection
-npx prisma db pull
-
-# Check migrations
-npx prisma migrate status
+# Farklı port kullanın
+PORT=3001 npm run dev
 ```
 
-#### Port Already in Use
+## 📞 Destek
 
-```bash
-# Find process using port 3000
-lsof -i :3000
+Herhangi bir sorun yaşarsanız:
+1. GitHub Issues'a bakın
+2. Dokümantasyonu kontrol edin
+3. Proje yöneticisiyle iletişime geçin
 
-# Kill process
-kill -9 <PID>
-```
+## 📝 Lisans
 
-### Security Notes
-
-1. **Never commit `.env` file** - It contains sensitive credentials
-2. **Use strong secrets** - Generate with `openssl rand -base64 32`
-3. **Enable HTTPS** - Always use SSL in production
-4. **Rate Limiting** - Already implemented in code
-5. **Audit Logging** - All operations logged to `aktivite_log` table
-6. **Webhook Security** - Consider adding webhook signature verification
-
-### Unit-Based Permissions
-
-The system enforces strict unit-based permissions:
-
-- **Admin / Başkan / İstatistikçi**: Can access all units and data
-- **SHM Görevlisi**: Only their own SHM unit and its sub-units
-- **ASM Görevlisi**: Only their own ASM unit
-- **Birim Yöneticisi**: Only their own unit
-
-This is enforced at:
-- API level (permissions functions)
-- Database query level (where clauses)
-- Frontend level (UI filtering)
-
-### Webhook Payload Structure
-
-All operational webhooks include complete auth context:
-
-```json
-{
-  "event": "shm_veri_giris_olusturuldu",
-  "auth": {
-    "user_id": "uuid",
-    "user_email": "email@example.com",
-    "user_name": "Ad Soyad",
-    "user_tc": "12345678901",
-    "role_code": "SHM_GOREVLISI",
-    "role_name": "SHM Görevlisi",
-    "role_level": 3,
-    "birim_id": "uuid",
-    "birim_ad": "İzmit SHM",
-    "birim_kod": "SHM-IZMIT",
-    "birim_tip": "SHM",
-    "permissions": [
-      {
-        "kod": "shm.veri_giris",
-        "ad": "SHM Veri Girişi",
-        "kategori": "SHM"
-      }
-    ]
-  },
-  "ip_adresi": "192.168.1.1",
-  "user_agent": "Mozilla/5.0...",
-  "timestamp": "2025-12-16T10:30:00.000Z",
-  "data": { /* operation specific data */ }
-}
-```
-
-### Support
-
-For issues or questions:
-- Technical Lead: [Contact Info]
-- n8n Webhook Issues: [Webhook Admin]
-- Database Issues: [DBA Contact]
+Bu proje Kocaeli İl Sağlık Müdürlüğü için geliştirilmiştir.
 
 ---
 
-Last Updated: 2025-12-26
-Version: 1.0.0-beta (SQLite + Görev/Takvim Modülleri)
+**Son Güncelleme:** 30 Aralık 2025
+**Versiyon:** 1.0.0-beta

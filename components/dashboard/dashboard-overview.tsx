@@ -155,7 +155,7 @@ const KocaeliMap = ({ selectedDistrict, onSelect, districtData }: { selectedDist
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-left w-full">
                                 {districtData.find(x => x.name === selectedDistrict)?.tsm > 0 && (
                                     <>
-                                        <span className="text-slate-400 text-[10px] uppercase">TSM/İlçe</span>
+                                        <span className="text-slate-400 text-[10px] uppercase">İlçe Sağlık Müdürlüğü</span>
                                         <span className="text-white font-bold text-xs text-right">{districtData.find(x => x.name === selectedDistrict)?.tsm}</span>
                                     </>
                                 )}

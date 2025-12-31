@@ -72,6 +72,10 @@ model Personel {
   takvim_etkinlikleri   TakvimEtkinlik[]  @relation("PersonelEtkinlik")
   olusturulan_etkinlikler TakvimEtkinlik[] @relation("OlusturanEtkinlik")
 
+  // DUYURU İLİŞKİLERİ
+  yayinlanan_duyurular Duyuru[]      @relation("YayinlayanPersonel")
+  okunan_duyurular     DuyuruOkuma[]
+
   @@index([email])
   @@index([tc_kimlik_no])
   @@index([rol_id])
@@ -99,6 +103,7 @@ model Rol {
   // İLİŞKİLER
   personeller Personel[]
   yetkiler    RolYetki[]
+  duyurular   Duyuru[]
 
   // ZAMAN DAMGALARI
   created_at DateTime @default(now())
@@ -183,6 +188,7 @@ model Birim {
   personeller    Personel[]
   veri_girisleri SHMVeriGiris[] @relation("BirimVeriGiris") // Dış birimlerin verilerini takip eder
   gorevler       Gorev[]
+  duyurular      Duyuru[]
 
   // ZAMAN DAMGALARI
   created_at DateTime @default(now())
@@ -396,4 +402,48 @@ model TakvimEtkinlik {
   @@index([baslangic])
   @@index([kod])
   @@map("takvim_etkinlikleri")
+}
+
+// ============================================
+// 11. DUYURU SİSTEMİ
+// ============================================
+model Duyuru {
+  id          Int      @id @default(autoincrement())
+  baslik      String   // Max 100
+  icerik      String   // Max 300 - Metin odaklı
+  
+  oncelik     String   @default("NORMAL") // NORMAL, ACIL, KRITIK
+  
+  // Hedefleme (Null ise herkes görebilir)
+  hedef_birim_id Int?  
+  hedef_birim    Birim? @relation(fields: [hedef_birim_id], references: [id])
+  
+  hedef_rol_id   Int?
+  hedef_rol      Rol?   @relation(fields: [hedef_rol_id], references: [id])
+  
+  yayinlayan_id Int    
+  yayinlayan    Personel @relation("YayinlayanPersonel", fields: [yayinlayan_id], references: [id])
+
+  gecerlilik_tarihi DateTime?
+  yayin_tarihi      DateTime @default(now())
+  
+  okunma_loglari DuyuruOkuma[]
+
+  @@index([yayin_tarihi])
+  @@index([hedef_birim_id])
+  @@index([hedef_rol_id])
+  @@map("duyurular")
+}
+
+model DuyuruOkuma {
+  duyuru_id   Int
+  duyuru      Duyuru @relation(fields: [duyuru_id], references: [id], onDelete: Cascade)
+  
+  personel_id Int
+  personel    Personel @relation(fields: [personel_id], references: [id], onDelete: Cascade)
+  
+  okundu_tarihi DateTime @default(now())
+
+  @@id([duyuru_id, personel_id])
+  @@map("duyuru_okuma")
 }

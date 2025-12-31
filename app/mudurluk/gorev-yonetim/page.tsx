@@ -311,11 +311,17 @@ export default function GorevYonetimPage() {
             const data = await res.json();
             if (data.success) {
                 toast.success('Durum güncellendi');
-                setGorevUpdate(prev => ({ ...prev, mesaj: '', gorsel_url: '' }));
+                setGorevUpdate((prev: any) => ({ ...prev, mesaj: '', gorsel_url: '' }));
                 if (data.data) {
-                    setSelectedGorev(data.data);
                     // Update list locally to reflect changes immediately
-                    setGorevler(prev => prev.map(g => g.id === data.data.id ? data.data : g));
+                    setGorevler((prev) => prev.map((g) => (g.id === data.data.id ? data.data : g)));
+
+                    // Eğer tamamlandı veya iptal ise modalı kapat
+                    if (gorevUpdate.durum === 'TAMAMLANDI' || gorevUpdate.durum === 'IPTAL') {
+                        setSelectedGorev(null);
+                    } else {
+                        setSelectedGorev(data.data);
+                    }
                 }
                 fetchData();
             } else {
@@ -1060,6 +1066,9 @@ export default function GorevYonetimPage() {
 
                     {createStep === 2 && (
                         <div className="space-y-6 py-4">
+                            <DialogHeader className="sr-only">
+                                <DialogTitle>Görevi Onayla</DialogTitle>
+                            </DialogHeader>
                             <div className="flex items-center gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl text-orange-800">
                                 <AlertTriangle className="w-8 h-8 shrink-0" />
                                 <div>
@@ -1224,6 +1233,7 @@ export default function GorevYonetimPage() {
                             <span>Etkinlik Detayı</span>
                             {selectedEtkinlik?.kod && <Badge variant="outline" className="font-mono text-xs">{selectedEtkinlik.kod}</Badge>}
                         </DialogTitle>
+                        <DialogDescription className="sr-only">Etkinlik detaylarını görüntüle</DialogDescription>
                     </DialogHeader>
                     {selectedEtkinlik && (
                         <div className="space-y-4 py-4">
@@ -1279,6 +1289,10 @@ export default function GorevYonetimPage() {
                 <DialogContent className="sm:max-w-[1000px] p-0 overflow-hidden max-h-[95vh] flex flex-col">
                     {selectedGorev && (
                         <>
+                            <DialogHeader className="sr-only">
+                                <DialogTitle>Görev Detayı: {selectedGorev.baslik}</DialogTitle>
+                                <DialogDescription>Görev detayları ve işlem menüsü</DialogDescription>
+                            </DialogHeader>
                             {/* Header */}
                             <div className="bg-gray-900 text-white p-3 shrink-0 relative">
                                 <div className="absolute top-2 right-2 z-50">
@@ -1333,9 +1347,9 @@ export default function GorevYonetimPage() {
                                             <div className="flex items-center gap-2 ml-auto">
                                                 <span className="text-[8px] text-gray-500 font-bold uppercase">Destek:</span>
                                                 <div className="flex items-center gap-1">
-                                                    {selectedGorev.destek_verenler.map((p, idx) => (
+                                                    {selectedGorev.destek_verenler?.map((p, idx) => (
                                                         <span key={p.id} className="text-[9px] text-gray-300 font-medium">
-                                                            {p.ad} {p.soyad}{idx < selectedGorev.destek_verenler.length - 1 ? ',' : ''}
+                                                            {p.ad} {p.soyad}{idx < (selectedGorev.destek_verenler?.length || 0) - 1 ? ',' : ''}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -1460,7 +1474,7 @@ export default function GorevYonetimPage() {
                                                     <Select value="" onValueChange={(val) => {
                                                         const destekList = gorevUpdate.destek_verenler || [];
                                                         if (!destekList.includes(val)) setGorevUpdate({ ...gorevUpdate, destek_verenler: [...destekList, val] });
-                                                        else setGorevUpdate({ ...gorevUpdate, destek_verenler: destekList.filter(x => x !== val) });
+                                                        else setGorevUpdate({ ...gorevUpdate, destek_verenler: destekList.filter((x: string) => x !== val) });
                                                     }}>
                                                         <SelectTrigger className="w-[300px] h-9"><SelectValue placeholder="Personel Seç..." /></SelectTrigger>
                                                         <SelectContent>
@@ -1470,11 +1484,11 @@ export default function GorevYonetimPage() {
                                                         </SelectContent>
                                                     </Select>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {(gorevUpdate.destek_verenler || []).map(id => {
+                                                        {(gorevUpdate.destek_verenler || []).map((id: string) => {
                                                             const p = personeller.find(x => x.id.toString() === id);
                                                             if (!p) return null;
                                                             return (
-                                                                <Badge key={id} variant="secondary" className="cursor-pointer hover:bg-red-100 flex items-center gap-1" onClick={() => setGorevUpdate(prev => ({ ...prev, destek_verenler: (prev.destek_verenler || []).filter(x => x !== id) }))}>
+                                                                <Badge key={id} variant="secondary" className="cursor-pointer hover:bg-red-100 flex items-center gap-1" onClick={() => setGorevUpdate((prev: any) => ({ ...prev, destek_verenler: (prev.destek_verenler || []).filter((x: string) => x !== id) }))}>
                                                                     {p.ad} {p.soyad} <XCircle className="w-3 h-3" />
                                                                 </Badge>
                                                             )

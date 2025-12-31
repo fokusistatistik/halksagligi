@@ -78,7 +78,7 @@ export default function SiteHeader() {
                                 Ana Sayfa
                             </Link>
 
-                            {session?.user?.rol?.kod === 'ADMIN' && (
+                            {session?.user?.rol?.seviye >= 4 && (
                                 <Link
                                     href="/mudurluk/gorev-yonetim"
                                     className={`transition-colors hover:text-primary whitespace-nowrap ${pathname.startsWith('/mudurluk/gorev-yonetim') ? 'text-primary' : 'text-gray-600'
@@ -233,7 +233,7 @@ export default function SiteHeader() {
                                 Ana Sayfa
                             </Link>
 
-                            {session?.user?.rol?.kod === 'ADMIN' && (
+                            {session?.user?.rol?.seviye >= 4 && (
                                 <Link
                                     href="/mudurluk/gorev-yonetim"
                                     className={`block px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/mudurluk/gorev-yonetim') ? 'bg-primary/10 text-primary' : 'text-gray-600 hover:bg-gray-50'

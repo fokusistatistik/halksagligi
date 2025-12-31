@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, Mail, Phone, MapPin, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Shield, CheckCircle2, AlertCircle, Building2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 
 export default function SettingsPage() {
@@ -207,22 +207,30 @@ export default function SettingsPage() {
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Minimal System Info */}
-                                <div className="flex flex-wrap items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 mb-6 text-xs gap-4">
-                                    <div className="flex items-center gap-6">
-                                        <div>
-                                            <span className="text-gray-400 block mb-0.5 font-medium uppercase tracking-wider">Rol / Yetki</span>
-                                            <span className="font-semibold text-gray-700">{displayUser.rol?.ad || '-'}</span>
+                                {/* System Info Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center items-center text-center space-y-1">
+                                        <div className="p-2 bg-blue-100 text-blue-600 rounded-full mb-1">
+                                            <Shield className="w-5 h-5" />
                                         </div>
-                                        <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
-                                        <div>
-                                            <span className="text-gray-400 block mb-0.5 font-medium uppercase tracking-wider">Bağlı Birim</span>
-                                            <span className="font-semibold text-gray-700">{displayUser.birim?.ad || '-'}</span>
-                                        </div>
+                                        <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Rol / Yetki</span>
+                                        <span className="font-bold text-gray-900 text-sm">{displayUser.rol?.ad || '-'}</span>
                                     </div>
-                                    <div>
-                                        <span className="text-gray-400 block mb-0.5 font-medium uppercase tracking-wider text-right">TC Kimlik No</span>
-                                        <span className="font-mono text-gray-700 bg-white px-2 py-1 rounded border shadow-sm">{displayUser.tc_kimlik_no || '-'}</span>
+
+                                    <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100 flex flex-col justify-center items-center text-center space-y-1">
+                                        <div className="p-2 bg-purple-100 text-purple-600 rounded-full mb-1">
+                                            <Building2 className="w-5 h-5" />
+                                        </div>
+                                        <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Bağlı Birim</span>
+                                        <span className="font-bold text-gray-900 text-sm">{displayUser.birim?.ad || '-'}</span>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col justify-center items-center text-center space-y-1">
+                                        <div className="p-2 bg-gray-100 text-gray-500 rounded-full mb-1">
+                                            <User className="w-5 h-5" />
+                                        </div>
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">TC Kimlik No</span>
+                                        <span className="font-mono font-bold text-gray-900 text-sm tracking-wider">{displayUser.tc_kimlik_no || '-'}</span>
                                     </div>
                                 </div>
 
@@ -232,8 +240,8 @@ export default function SettingsPage() {
                                         <Input
                                             id="ad"
                                             value={formData.ad}
-                                            onChange={(e) => setFormData({ ...formData, ad: e.target.value })}
-                                            required
+                                            disabled
+                                            className="bg-gray-50 text-gray-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -241,8 +249,8 @@ export default function SettingsPage() {
                                         <Input
                                             id="soyad"
                                             value={formData.soyad}
-                                            onChange={(e) => setFormData({ ...formData, soyad: e.target.value })}
-                                            required
+                                            disabled
+                                            className="bg-gray-50 text-gray-500"
                                         />
                                     </div>
                                 </div>
@@ -285,16 +293,7 @@ export default function SettingsPage() {
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="profil_foto_url">Profil Fotoğrafı URL</Label>
-                                    <Input
-                                        id="profil_foto_url"
-                                        value={formData.profil_foto_url}
-                                        onChange={(e) => setFormData({ ...formData, profil_foto_url: e.target.value })}
-                                        placeholder="https://..."
-                                    />
-                                    <p className="text-[10px] text-gray-500">Profil fotoğrafınızın herkese açık URL'sini buraya giriniz.</p>
-                                </div>
+
 
                                 <div className="space-y-2">
                                     <Label htmlFor="adres" className="flex items-center gap-2">

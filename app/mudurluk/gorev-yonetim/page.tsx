@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchGorevler, fetchEtkinlikler, fetchPersoneller, createGorev, createEtkinlik, cancelEtkinlik } from './api';
 import {
     ClipboardList,
     Calendar as CalendarIcon,
@@ -10,20 +12,16 @@ import {
     Clock,
     CheckCircle2,
     XCircle,
-    Users,
     ChevronLeft,
     ChevronRight,
-    Search,
-    MessageSquare,
     AlertCircle,
-    Settings,
     Edit,
-    X,
-    AlertTriangle
+    AlertTriangle,
+    MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,52 +35,13 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
+
 } from "@/components/ui/dialog"
 import { Textarea } from '@/components/ui/textarea';
 
-// --- Types ---
-type Gorev = {
-    id: string;
-    kod?: string; // GÖREV-YY-000001
-    baslik: string;
-    aciklama: string;
-    durum: 'BEKLEYEN' | 'DEVAM_EDEN' | 'TAMAMLANDI' | 'IPTAL';
-    oncelik: 'DUSUK' | 'ORTA' | 'YUKSEK' | 'ACIL';
-    kategori: string;
-    baslangic_tarihi?: string;
-    bitis_tarihi?: string;
-    tamamlanma_tarihi?: string;
-    tamamlayan_id?: string;
-    tamamlanma_notu?: string;
-    gorsel_1?: string;
-    gorsel_1_not?: string;
-    gorsel_2?: string;
-    gorsel_2_not?: string;
-    gorsel_3?: string;
-    gorsel_3_not?: string;
-    sorumlu: { id: string, ad: string, soyad: string, profil_foto_url?: string, unvan?: string };
-    olusturan: { id: string, ad: string, soyad: string };
-    destek_verenler?: { id: string, ad: string, soyad: string, profil_foto_url?: string }[];
-    guncellemeler: any[];
-    created_at: string;
-    is_suresiz?: boolean;
-};
-
-type Etkinlik = {
-    id: string;
-    kod?: string; // TAKVİM-YY-0000001
-    baslik: string;
-    aciklama?: string;
-    tip: string;
-    yer?: 'KURUM_ICI' | 'KURUM_DISI';
-    durum?: string;
-    renk?: string;
-    baslangic: string;
-    bitis: string;
-    personel_id: string;
-    olusturan: { ad: string, soyad: string };
-};
+import { TaskDetailModal } from './components/modals/task-detail-modal';
+import { TaskFilters } from './components/task-filters';
+import { Gorev, Etkinlik, Personel } from './types';
 
 export default function GorevYonetimPage() {
     // --- State ---
@@ -94,15 +53,10 @@ export default function GorevYonetimPage() {
     const [activeTab, setActiveTab] = useState('list');
     const [subTab, setSubTab] = useState<'DEVAM_EDEN' | 'TAMAMLANDI'>('DEVAM_EDEN');
     const [createStep, setCreateStep] = useState(1);
-    const [gorevler, setGorevler] = useState<Gorev[]>([]);
-    const [etkinlikler, setEtkinlikler] = useState<Etkinlik[]>([]);
-    const [personeller, setPersoneller] = useState<any[]>([]);
-
     // Filters
     const [filterSorumlu, setFilterSorumlu] = useState<string>('all');
     const [dateRange, setDateRange] = useState<Date | undefined>(new Date());
 
-    const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [viewDate, setViewDate] = useState(new Date());
     const [dayEvents, setDayEvents] = useState<any[]>([]);
@@ -110,9 +64,6 @@ export default function GorevYonetimPage() {
     // Modals
     const [isGorevModalOpen, setIsGorevModalOpen] = useState(false);
     const [isEtkinlikModalOpen, setIsEtkinlikModalOpen] = useState(false);
-    const [selectedGorev, setSelectedGorev] = useState<Gorev | null>(null);
-    const [selectedEtkinlik, setSelectedEtkinlik] = useState<Etkinlik | null>(null);
-    const [gorevUpdate, setGorevUpdate] = useState<any>({ durum: '', mesaj: '', tamamlanma_notu: '', gorsel_url: '', baslik: '', aciklama: '', oncelik: '', sorumlu_id: '', baslangic_tarihi: '', bitis_tarihi: '', destek_verenler: [] });
 
     // Forms
     const [newGorev, setNewGorev] = useState({
@@ -140,6 +91,103 @@ export default function GorevYonetimPage() {
         personel_id: ''
     });
 
+    const queryClient = useQueryClient();
+    const [selectedGorevId, setSelectedGorevId] = useState<string | null>(null);
+    const [selectedEtkinlikId, setSelectedEtkinlikId] = useState<string | null>(null);
+
+    // Queries
+    const { data: gorevler = [], isLoading: gorevLoading } = useQuery({
+        queryKey: ['gorevler', filterSorumlu],
+        queryFn: () => fetchGorevler(filterSorumlu),
+    });
+
+    const { data: etkinlikler = [], isLoading: etkinlikLoading } = useQuery({
+        queryKey: ['etkinlikler', viewDate.toISOString(), filterSorumlu],
+        queryFn: () => fetchEtkinlikler(viewDate, filterSorumlu),
+    });
+
+    const { data: personeller = [] } = useQuery({
+        queryKey: ['personeller'],
+        queryFn: fetchPersoneller
+    });
+
+    // Loading state for UI compatibility
+    const loading = gorevLoading || etkinlikLoading;
+
+    // Derived State
+    const selectedGorev = gorevler.find(g => g.id === selectedGorevId) || null;
+    const selectedEtkinlik = etkinlikler.find(e => e.id === selectedEtkinlikId) || null;
+
+    // Bridge Wrappers (to maintain compatibility with existing JSX calls)
+    const setSelectedGorev = (g: Gorev | null) => setSelectedGorevId(g ? g.id : null);
+    const setSelectedEtkinlik = (e: Etkinlik | null) => setSelectedEtkinlikId(e ? e.id : null);
+
+    // Mutations
+    const createGorevMutation = useMutation({
+        mutationFn: createGorev,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['gorevler'] });
+            toast.success('Görev başarıyla oluşturuldu');
+            setIsGorevModalOpen(false);
+            setCreateStep(1);
+            setNewGorev({
+                baslik: '',
+                aciklama: '',
+                sorumlu_id: user?.id || '',
+                destek_verenler: [],
+                oncelik: 'ORTA',
+                kategori: 'DIGER',
+                baslangic_tarihi: new Date().toISOString().split('T')[0],
+                bitis_tarihi: '',
+                is_suresiz: false,
+                gorsel_1: '', gorsel_1_not: '',
+                gorsel_2: '', gorsel_2_not: '',
+                gorsel_3: '', gorsel_3_not: ''
+            });
+        },
+        onError: () => toast.error('Görev oluşturulamadı')
+    });
+
+    const createEtkinlikMutation = useMutation({
+        mutationFn: createEtkinlik,
+        onSuccess: () => {
+            // Etkinlik tarihine git
+            if (newEtkinlik.baslangic) {
+                const eventDate = new Date(newEtkinlik.baslangic);
+                setViewDate(eventDate);
+                setSelectedDate(eventDate);
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['etkinlikler'] });
+            toast.success('Etkinlik başarıyla oluşturuldu');
+            setIsEtkinlikModalOpen(false);
+            setNewEtkinlik({
+                baslik: '',
+                aciklama: '',
+                tip: 'TOPLANTI',
+                yer: 'KURUM_ICI',
+                baslangic: '',
+                bitis: '',
+                personel_id: ''
+            });
+        },
+        onError: (err: any) => {
+            toast.error(err.message || 'Etkinlik oluşturulamadı');
+        }
+    });
+
+    const cancelEtkinlikMutation = useMutation({
+        mutationFn: cancelEtkinlik,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['etkinlikler'] });
+            toast.success('Etkinlik iptal edildi');
+            setSelectedEtkinlikId(null);
+        },
+        onError: () => toast.error('İptal edilemedi')
+    });
+
+
+
     useEffect(() => {
         if (user?.id && !newGorev.sorumlu_id) {
             setNewGorev(prev => ({ ...prev, sorumlu_id: user.id }));
@@ -147,224 +195,30 @@ export default function GorevYonetimPage() {
     }, [user]);
 
     useEffect(() => {
-        if (selectedGorev) {
-            setGorevUpdate({
-                durum: selectedGorev.durum || 'DEVAM_EDEN', // Default to current status or DEVAM_EDEN
-                mesaj: '',
-                tamamlanma_notu: '',
-                gorsel_url: '',
-                // Pre-fill settings
-                baslik: selectedGorev.baslik,
-                aciklama: selectedGorev.aciklama,
-                oncelik: selectedGorev.oncelik,
-                sorumlu_id: selectedGorev.sorumlu.id.toString(),
-                baslangic_tarihi: selectedGorev.baslangic_tarihi ? new Date(selectedGorev.baslangic_tarihi).toISOString().split('T')[0] : '',
-                bitis_tarihi: selectedGorev.bitis_tarihi ? new Date(selectedGorev.bitis_tarihi).toISOString().split('T')[0] : '',
-                destek_verenler: selectedGorev.destek_verenler?.map(p => p.id.toString()) || []
-            });
+        if (personeller.length > 0 && !newGorev.sorumlu_id) {
+            setNewGorev(prev => ({ ...prev, sorumlu_id: personeller[0].id.toString() }));
         }
-    }, [selectedGorev]);
-
-    useEffect(() => {
-        if (session) {
-            fetchData();
-            fetchPersoneller();
-        }
-    }, [session, filterSorumlu, viewDate]); // Refetch when filter or viewDate changes
-
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            // Build Gorev URL
-            let gUrl = '/api/gorev';
-            const params = new URLSearchParams();
-            if (filterSorumlu && filterSorumlu !== 'all') params.append('userId', filterSorumlu);
-            if (params.toString()) gUrl += `?${params.toString()}`;
-
-            // Build Etkinlik URL (Monthly based on viewDate)
-            const startOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
-            const endOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0, 23, 59, 59);
-
-            let eUrl = `/api/takvim?start=${startOfMonth.toISOString()}&end=${endOfMonth.toISOString()}`;
-            if (filterSorumlu && filterSorumlu !== 'all') {
-                eUrl += `&userId=${filterSorumlu}`;
-            }
-
-            const [gRes, eRes] = await Promise.all([
-                fetch(gUrl),
-                fetch(eUrl)
-            ]);
-
-            const gData = await gRes.json();
-            const eData = await eRes.json();
-
-            if (gData.success) {
-                setGorevler(gData.data);
-                if (selectedGorev) {
-                    const updated = gData.data.find((g: Gorev) => g.id === selectedGorev.id);
-                    if (updated) setSelectedGorev(updated);
-                }
-            }
-            if (eData.success) {
-                setEtkinlikler(eData.data);
-            }
-        } catch (error) {
-            console.error('Data fetch error:', error);
-            toast.error('Veriler yüklenemedi');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchPersoneller = async () => {
-        try {
-            const res = await fetch('/api/personel?limit=100');
-            const data = await res.json();
-            if (data.success) {
-                setPersoneller(data.data);
-                if (data.data.length > 0) {
-                    setNewGorev(prev => ({ ...prev, sorumlu_id: data.data[0].id }));
-                }
-            }
-        } catch (error) {
-            console.error('Personel fetch error:', error);
-        }
-    };
+    }, [personeller]);
 
     const handleCreateStep1 = (e: React.FormEvent) => {
         e.preventDefault();
         setCreateStep(2);
     };
 
-    const handleCreateConfirm = async () => {
-        try {
-            const res = await fetch('/api/gorev', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newGorev)
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success('Görev başarıyla oluşturuldu');
-                setIsGorevModalOpen(false);
-                setCreateStep(1);
-                setNewGorev({
-                    baslik: '',
-                    aciklama: '',
-                    sorumlu_id: user?.id || '',
-                    oncelik: 'ORTA',
-                    kategori: 'DIGER',
-                    baslangic_tarihi: new Date().toISOString().split('T')[0],
-                    bitis_tarihi: '',
-                    is_suresiz: false,
-                    destek_verenler: [],
-                    gorsel_1: '', gorsel_1_not: '',
-                    gorsel_2: '', gorsel_2_not: '',
-                    gorsel_3: '', gorsel_3_not: ''
-                });
-                fetchData();
-            } else {
-                toast.error(data.error || 'Hata oluştu');
-            }
-        } catch (_error) {
-            toast.error('Bağlantı hatası');
-        }
+    const handleCreateConfirm = () => {
+        createGorevMutation.mutate(newGorev);
     };
 
-    const handleEtkinlikSubmit = async (e: React.FormEvent) => {
+    const handleEtkinlikSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            const res = await fetch('/api/takvim', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newEtkinlik)
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success('Etkinlik eklendi');
-                setIsEtkinlikModalOpen(false);
-                setNewEtkinlik({ baslik: '', aciklama: '', tip: 'TOPLANTI', yer: 'KURUM_ICI', baslangic: '', bitis: '', personel_id: user?.id || '' });
-                fetchData();
-            } else {
-                toast.error(data.error || 'Hata oluştu');
-            }
-        } catch (_error) {
-            toast.error('Bağlantı hatası');
-        }
+        createEtkinlikMutation.mutate(newEtkinlik);
     };
 
-    const handleStatusSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedGorev) return;
-        try {
-            const payload = {
-                durum: gorevUpdate.durum,
-                mesaj: gorevUpdate.mesaj,
-                tamamlanma_notu: gorevUpdate.tamamlanma_notu,
-                gorsel_url: gorevUpdate.gorsel_url
-            };
-            const res = await fetch(`/api/gorev/${selectedGorev.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success('Durum güncellendi');
-                setGorevUpdate((prev: any) => ({ ...prev, mesaj: '', gorsel_url: '' }));
-                if (data.data) {
-                    // Update list locally to reflect changes immediately
-                    setGorevler((prev) => prev.map((g) => (g.id === data.data.id ? data.data : g)));
-
-                    // Eğer tamamlandı veya iptal ise modalı kapat
-                    if (gorevUpdate.durum === 'TAMAMLANDI' || gorevUpdate.durum === 'IPTAL') {
-                        setSelectedGorev(null);
-                    } else {
-                        setSelectedGorev(data.data);
-                    }
-                }
-                fetchData();
-            } else {
-                toast.error(data.error || 'Hata oluştu');
-            }
-        } catch (_error) {
-            toast.error('Bağlantı hatası');
+    const handleTaskUpdate = (updatedTask: Gorev | null) => {
+        if (!updatedTask) {
+            setSelectedGorevId(null);
         }
-    };
-
-    const handleSettingsSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedGorev) return;
-        try {
-            // Exclude status related fields, send only settings
-            const payload = {
-                baslik: gorevUpdate.baslik,
-                aciklama: gorevUpdate.aciklama,
-                oncelik: gorevUpdate.oncelik,
-                sorumlu_id: gorevUpdate.sorumlu_id,
-                baslangic_tarihi: gorevUpdate.baslangic_tarihi,
-                bitis_tarihi: gorevUpdate.bitis_tarihi,
-                destek_verenler: gorevUpdate.destek_verenler
-            };
-            const res = await fetch(`/api/gorev/${selectedGorev.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success('Ayarlar kaydedildi');
-                if (data.data) {
-                    setSelectedGorev(data.data);
-                    setGorevler(prev => prev.map(g => g.id === data.data.id ? data.data : g));
-                }
-                fetchData();
-            } else {
-                toast.error(data.error || 'Hata oluştu');
-            }
-        } catch (_error) {
-            toast.error('Bağlantı hatası');
-        }
+        queryClient.invalidateQueries({ queryKey: ['gorevler'] });
     };
 
     const handleDateChange = (days: number) => {
@@ -387,25 +241,12 @@ export default function GorevYonetimPage() {
         return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}&location=${location}`;
     };
 
-    const handleCancelEtkinlik = async (etkinlikId: string) => {
-        try {
-            const res = await fetch(`/api/takvim/${etkinlikId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'cancel' })
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success('Etkinlik iptal edildi');
-                setSelectedEtkinlik(null);
-                fetchData();
-            } else {
-                toast.error(data.error || 'Hata oluştu');
-            }
-        } catch (_error) {
-            toast.error('Bağlantı hatası');
+    const handleCancelEtkinlik = (etkinlikId: string) => {
+        if (confirm('Etkinliği iptal etmek istediğinize emin misiniz?')) {
+            cancelEtkinlikMutation.mutate(etkinlikId);
         }
     };
+
 
     // --- Helper Functions ---
     const getDaysRemaining = (date: string | Date) => {
@@ -547,48 +388,16 @@ export default function GorevYonetimPage() {
                 </div>
 
                 {/* Filters Row */}
-                <div className="flex items-center justify-between gap-4 bg-white p-2 rounded-xl border shadow-sm">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-gray-100 p-2 rounded-lg">
-                            <Search className="w-4 h-4 text-gray-500" />
-                        </div>
-                        {isLevel9 && (
-                            <Select value={filterSorumlu} onValueChange={setFilterSorumlu}>
-                                <SelectTrigger className="w-[200px] h-9 text-xs font-medium border-0 bg-transparent hover:bg-gray-50 rounded-lg transition-colors">
-                                    <div className="flex items-center gap-2">
-                                        <Users className="w-3.5 h-3.5 text-gray-400" />
-                                        <span>{filterSorumlu === 'all' ? 'Tüm Sorumlular' : personeller.find(p => p.id === filterSorumlu)?.ad + ' ' + personeller.find(p => p.id === filterSorumlu)?.soyad}</span>
-                                    </div>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Tüm Sorumlular</SelectItem>
-                                    {personeller.map(p => (
-                                        <SelectItem key={p.id} value={p.id}>{p.ad} {p.soyad}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                        {activeTab === 'list' && (
-                            <>
-                                <div className="h-6 w-px bg-gray-200 mx-2" />
-                                <div className="flex items-center gap-1 bg-gray-100/50 p-1 rounded-lg">
-                                    <button
-                                        onClick={() => setSubTab('DEVAM_EDEN')}
-                                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${subTab === 'DEVAM_EDEN' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                                    >
-                                        Devam Edenler ({gorevler.filter(g => ['DEVAM_EDEN', 'BEKLEYEN'].includes(g.durum)).length})
-                                    </button>
-                                    <button
-                                        onClick={() => setSubTab('TAMAMLANDI')}
-                                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${subTab === 'TAMAMLANDI' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                                    >
-                                        Tamamlananlar ({gorevler.filter(g => ['TAMAMLANDI', 'IPTAL'].includes(g.durum)).length})
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
+                <TaskFilters
+                    isLevel9={isLevel9}
+                    filterSorumlu={filterSorumlu}
+                    setFilterSorumlu={setFilterSorumlu}
+                    personeller={personeller}
+                    activeTab={activeTab}
+                    subTab={subTab}
+                    setSubTab={setSubTab}
+                    gorevler={gorevler}
+                />
 
                 {activeTab === 'list' && (
                     <div className="space-y-4">
@@ -626,7 +435,6 @@ export default function GorevYonetimPage() {
                                                     }`}
                                                 onClick={() => {
                                                     setSelectedGorev(gorev);
-                                                    setGorevUpdate({ durum: gorev.durum, mesaj: '', tamamlanma_notu: gorev.tamamlanma_notu || '', gorsel_url: '' });
                                                 }}
                                             >
                                                 <div className="p-4 space-y-3">
@@ -648,7 +456,6 @@ export default function GorevYonetimPage() {
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setSelectedGorev(gorev);
-                                                                        setGorevUpdate({ durum: gorev.durum, mesaj: '', tamamlanma_notu: gorev.tamamlanma_notu || '', gorsel_url: '' });
                                                                     }}
                                                                     className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
                                                                     title="Görevi Düzenle"
@@ -785,11 +592,15 @@ export default function GorevYonetimPage() {
 
                                                 // Find Events
                                                 const dayEvents = etkinlikler.filter(e => {
-                                                    const eStart = new Date(e.baslangic);
+                                                    const eventStart = new Date(e.baslangic);
+                                                    eventStart.setHours(0, 0, 0, 0);
+                                                    const eventEnd = new Date(e.bitis);
+                                                    eventEnd.setHours(23, 59, 59, 999);
+
                                                     const current = new Date(date);
-                                                    return eStart.getDate() === current.getDate() &&
-                                                        eStart.getMonth() === current.getMonth() &&
-                                                        eStart.getFullYear() === current.getFullYear();
+                                                    current.setHours(0, 0, 0, 0);
+
+                                                    return current.getTime() >= eventStart.getTime() && current.getTime() <= eventEnd.getTime();
                                                 });
 
                                                 const totalCount = dayTasks.length + dayEvents.length;
@@ -855,10 +666,15 @@ export default function GorevYonetimPage() {
                                             .filter(e => {
                                                 if (!selectedDate) return false;
                                                 const sDate = new Date(selectedDate);
-                                                const eStart = new Date(e.baslangic);
-                                                return eStart.getDate() === sDate.getDate() &&
-                                                    eStart.getMonth() === sDate.getMonth() &&
-                                                    eStart.getFullYear() === sDate.getFullYear();
+                                                sDate.setHours(0, 0, 0, 0);
+
+                                                const eventStart = new Date(e.baslangic);
+                                                eventStart.setHours(0, 0, 0, 0);
+
+                                                const eventEnd = new Date(e.bitis);
+                                                eventEnd.setHours(23, 59, 59, 999);
+
+                                                return sDate.getTime() >= eventStart.getTime() && sDate.getTime() <= eventEnd.getTime();
                                             })
                                             .sort((a, b) => new Date(a.baslangic).getTime() - new Date(b.baslangic).getTime())
                                             .map(e => (
@@ -880,9 +696,18 @@ export default function GorevYonetimPage() {
                                                 </div>
                                             ))
                                         }
-                                        {etkinlikler.filter(e => selectedDate && new Date(e.baslangic).toDateString() === selectedDate.toDateString()).length === 0 && (
-                                            <div className="text-center py-2 text-[10px] text-gray-300 italic border border-dashed rounded-lg">Etkinlik bulunmuyor</div>
-                                        )}
+                                        {etkinlikler.filter(e => {
+                                            if (!selectedDate) return false;
+                                            const sDate = new Date(selectedDate);
+                                            sDate.setHours(0, 0, 0, 0);
+                                            const eventStart = new Date(e.baslangic);
+                                            eventStart.setHours(0, 0, 0, 0);
+                                            const eventEnd = new Date(e.bitis);
+                                            eventEnd.setHours(23, 59, 59, 999);
+                                            return sDate.getTime() >= eventStart.getTime() && sDate.getTime() <= eventEnd.getTime();
+                                        }).length === 0 && (
+                                                <div className="text-center py-2 text-[10px] text-gray-300 italic border border-dashed rounded-lg">Etkinlik bulunmuyor</div>
+                                            )}
                                     </div>
 
                                     {/* Tasks Section */}
@@ -1285,229 +1110,16 @@ export default function GorevYonetimPage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={!!selectedGorev} onOpenChange={(open) => !open && setSelectedGorev(null)}>
-                <DialogContent className="sm:max-w-[1000px] p-0 overflow-hidden max-h-[95vh] flex flex-col">
-                    {selectedGorev && (
-                        <>
-                            <DialogHeader className="sr-only">
-                                <DialogTitle>Görev Detayı: {selectedGorev.baslik}</DialogTitle>
-                                <DialogDescription>Görev detayları ve işlem menüsü</DialogDescription>
-                            </DialogHeader>
-                            {/* Header */}
-                            <div className="bg-gray-900 text-white p-3 shrink-0 relative">
-                                <div className="absolute top-2 right-2 z-50">
-                                    <button
-                                        onClick={() => setSelectedGorev(null)}
-                                        className="bg-white/90 hover:bg-white text-gray-900 p-1.5 rounded-full shadow-lg transition-all hover:scale-110"
-                                        title="Kapat"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                                <div className="flex flex-col gap-2 pr-10">
-                                    <div className="flex items-center justify-between flex-wrap gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="outline" className="text-white border-white/20 text-[9px] uppercase font-bold tracking-wider rounded-md">
-                                                {selectedGorev.kategori}
-                                            </Badge>
-                                            <Badge className={`text-[9px] font-bold ${selectedGorev.oncelik === 'ACIL' ? 'bg-red-500 hover:bg-red-600' :
-                                                selectedGorev.oncelik === 'YUKSEK' ? 'bg-orange-500 hover:bg-orange-600' :
-                                                    'bg-blue-500 hover:bg-blue-600'
-                                                } `}>
-                                                {selectedGorev.oncelik}
-                                            </Badge>
-                                            <Badge variant="secondary" className="text-[9px] bg-white/10 text-white hover:bg-white/20">
-                                                {selectedGorev.durum}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-[9px] text-gray-400">
-                                            <span>📅 {new Date(selectedGorev.baslangic_tarihi || selectedGorev.created_at).toLocaleDateString('tr-TR')}</span>
-                                            <span>→</span>
-                                            <span>{selectedGorev.bitis_tarihi ? new Date(selectedGorev.bitis_tarihi).toLocaleDateString('tr-TR') : 'Süresiz'}</span>
-                                        </div>
-                                    </div>
-                                    <h2 className="text-base font-black tracking-tight leading-tight">{selectedGorev.baslik}</h2>
-                                    <p className="text-[11px] text-gray-400 font-medium leading-snug">
-                                        {selectedGorev.aciklama}
-                                    </p>
-                                    <div className="flex items-center gap-3 pt-2 border-t border-white/10">
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="w-6 h-6 border-2 border-gray-800">
-                                                <AvatarImage src={selectedGorev.sorumlu?.profil_foto_url} />
-                                                <AvatarFallback className="text-[10px] bg-gray-700">{selectedGorev.sorumlu?.ad?.[0]}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <div className="text-[10px] font-bold text-gray-200">
-                                                    {selectedGorev.sorumlu?.ad} {selectedGorev.sorumlu?.soyad}
-                                                </div>
-                                                <div className="text-[8px] text-gray-500 uppercase font-black">Sorumlu</div>
-                                            </div>
-                                        </div>
-                                        {selectedGorev.destek_verenler && selectedGorev.destek_verenler.length > 0 && (
-                                            <div className="flex items-center gap-2 ml-auto">
-                                                <span className="text-[8px] text-gray-500 font-bold uppercase">Destek:</span>
-                                                <div className="flex items-center gap-1">
-                                                    {selectedGorev.destek_verenler?.map((p, idx) => (
-                                                        <span key={p.id} className="text-[9px] text-gray-300 font-medium">
-                                                            {p.ad} {p.soyad}{idx < (selectedGorev.destek_verenler?.length || 0) - 1 ? ',' : ''}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Body */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
-
-                                {/* Süreç Günlüğü ve Durum Güncelleme */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                                    {/* Süreç Günlüğü */}
-                                    <div className="bg-white p-3 rounded-xl border shadow-sm">
-                                        <h4 className="font-black text-gray-900 flex items-center gap-2 border-b pb-2 mb-2 text-xs">
-                                            <MessageSquare className="w-3 h-3" /> SÜREÇ GÜNLÜĞÜ
-                                        </h4>
-                                        <div className="max-h-[280px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                                            {selectedGorev.guncellemeler.map((u, i) => (
-                                                <div key={i} className="bg-gray-50 p-2 rounded-lg border text-sm">
-                                                    <div className="flex justify-between mb-0.5">
-                                                        <span className="font-bold text-[10px] text-primary">{u.personel.ad} {u.personel.soyad}</span>
-                                                        <span className="text-[9px] text-gray-400">{new Date(u.created_at).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                                                    </div>
-                                                    <p className="text-gray-600 text-[10px] leading-snug">{u.mesaj}</p>
-                                                </div>
-                                            ))}
-                                            {selectedGorev.guncellemeler.length === 0 && <div className="text-center text-[10px] text-gray-400 py-4">Henüz kayıt yok.</div>}
-                                        </div>
-                                    </div>
-
-                                    {/* Durum Güncelleme */}
-                                    <div className="bg-white p-4 rounded-xl border shadow-sm">
-                                        <h4 className="font-black text-gray-900 border-b pb-2 mb-4 text-sm uppercase">DURUM GÜNCELLE</h4>
-                                        <form onSubmit={handleStatusSubmit} className="space-y-3">
-                                            <div className="space-y-1">
-                                                <Label className="text-xs">Aksiyon</Label>
-                                                <Select value={gorevUpdate.durum} onValueChange={(val) => setGorevUpdate({ ...gorevUpdate, durum: val })}>
-                                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="DEVAM_EDEN">Devam Ediyor</SelectItem>
-                                                        <SelectItem value="TAMAMLANDI">Tamamlandı</SelectItem>
-                                                        {isManagement && <SelectItem value="IPTAL">İptal Et</SelectItem>}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            {(gorevUpdate.durum === 'TAMAMLANDI' || gorevUpdate.durum === 'IPTAL') && (
-                                                <Textarea placeholder="Sonuç notu..." required value={gorevUpdate.tamamlanma_notu} onChange={e => setGorevUpdate({ ...gorevUpdate, tamamlanma_notu: e.target.value })} className="text-xs" />
-                                            )}
-                                            <Textarea placeholder="Süreç notu ekle..." value={gorevUpdate.mesaj} onChange={e => setGorevUpdate({ ...gorevUpdate, mesaj: e.target.value })} className="text-xs min-h-[80px]" />
-
-                                            <div className="space-y-1">
-                                                <Label className="text-xs">Görsel Kanıt (URL)</Label>
-                                                <Input className="h-9 text-xs" placeholder="https://..." value={gorevUpdate.gorsel_url || ''} onChange={(e) => setGorevUpdate({ ...gorevUpdate, gorsel_url: e.target.value })} />
-                                            </div>
-
-                                            <Button type="submit" className="w-full bg-primary font-bold text-sm" disabled={!isManagement && selectedGorev.sorumlu.id !== user?.id && selectedGorev.olusturan.id !== user?.id}>DURUMU GÜNCELLE</Button>
-
-                                            {(!isManagement && selectedGorev.sorumlu.id !== user?.id && selectedGorev.olusturan.id !== user?.id) && (
-                                                <p className="text-[9px] text-gray-400 italic text-center">Yetkiniz yok.</p>
-                                            )}
-                                        </form>
-                                    </div>
-                                </div>
-
-                                {/* Separated Settings for Management */}
-                                {isManagement && (
-                                    <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm mt-4">
-                                        <h4 className="font-black text-gray-900 border-b pb-2 mb-3 flex items-center gap-2 text-xs">
-                                            <Settings className="w-4 h-4" /> GÖREV AYARLARI (DÜZENLEME)
-                                        </h4>
-                                        <form onSubmit={handleSettingsSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                                            {isLevel9 && (
-                                                <>
-                                                    <div className="col-span-2 space-y-1">
-                                                        <Label>Başlık</Label>
-                                                        <Input value={gorevUpdate.baslik} onChange={e => setGorevUpdate({ ...gorevUpdate, baslik: e.target.value })} className="font-bold" />
-                                                    </div>
-                                                    <div className="col-span-2 space-y-1">
-                                                        <Label>Açıklama</Label>
-                                                        <Textarea value={gorevUpdate.aciklama} onChange={e => setGorevUpdate({ ...gorevUpdate, aciklama: e.target.value })} />
-                                                    </div>
-                                                </>
-                                            )}
-
-                                            <div className="space-y-1">
-                                                <Label>Öncelik</Label>
-                                                <Select value={gorevUpdate.oncelik} onValueChange={(val: any) => setGorevUpdate({ ...gorevUpdate, oncelik: val })}>
-                                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="DUSUK">Düşük</SelectItem>
-                                                        <SelectItem value="ORTA">Orta</SelectItem>
-                                                        <SelectItem value="YUKSEK">Yüksek</SelectItem>
-                                                        <SelectItem value="ACIL">Acil</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label>Sorumlu Personel</Label>
-                                                <Select value={gorevUpdate.sorumlu_id} onValueChange={(val) => setGorevUpdate({ ...gorevUpdate, sorumlu_id: val })}>
-                                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        {personeller.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.ad} {p.soyad}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label>Başlangıç</Label>
-                                                <Input type="date" value={gorevUpdate.baslangic_tarihi} onChange={e => setGorevUpdate({ ...gorevUpdate, baslangic_tarihi: e.target.value })} />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label>Bitiş</Label>
-                                                <Input type="date" value={gorevUpdate.bitis_tarihi} onChange={e => setGorevUpdate({ ...gorevUpdate, bitis_tarihi: e.target.value })} min={gorevUpdate.baslangic_tarihi} />
-                                            </div>
-
-                                            <div className="col-span-full space-y-2 pt-2 border-t mt-2">
-                                                <Label>Destek Personeli Ekle/Çıkar</Label>
-                                                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                                                    <Select value="" onValueChange={(val) => {
-                                                        const destekList = gorevUpdate.destek_verenler || [];
-                                                        if (!destekList.includes(val)) setGorevUpdate({ ...gorevUpdate, destek_verenler: [...destekList, val] });
-                                                        else setGorevUpdate({ ...gorevUpdate, destek_verenler: destekList.filter((x: string) => x !== val) });
-                                                    }}>
-                                                        <SelectTrigger className="w-[300px] h-9"><SelectValue placeholder="Personel Seç..." /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {personeller.filter(p => p.id.toString() !== gorevUpdate.sorumlu_id).map(p => (
-                                                                <SelectItem key={p.id} value={p.id.toString()}>{(gorevUpdate.destek_verenler || []).includes(p.id.toString()) ? '✓ ' : ''} {p.ad} {p.soyad}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {(gorevUpdate.destek_verenler || []).map((id: string) => {
-                                                            const p = personeller.find(x => x.id.toString() === id);
-                                                            if (!p) return null;
-                                                            return (
-                                                                <Badge key={id} variant="secondary" className="cursor-pointer hover:bg-red-100 flex items-center gap-1" onClick={() => setGorevUpdate((prev: any) => ({ ...prev, destek_verenler: (prev.destek_verenler || []).filter((x: string) => x !== id) }))}>
-                                                                    {p.ad} {p.soyad} <XCircle className="w-3 h-3" />
-                                                                </Badge>
-                                                            )
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="col-span-full pt-4 flex justify-end">
-                                                <Button type="submit" size="lg" className="bg-gray-900 text-white font-bold px-8 shadow-xl hover:bg-black">AYARLARI KAYDET</Button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    )}
-                </DialogContent>
-            </Dialog>
+            <TaskDetailModal
+                task={selectedGorev}
+                open={!!selectedGorev}
+                onClose={() => setSelectedGorev(null)}
+                onUpdate={handleTaskUpdate}
+                user={user}
+                personeller={personeller}
+                isManagement={isManagement}
+                isLevel9={isLevel9}
+            />
         </div>
 
     );

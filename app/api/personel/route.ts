@@ -44,7 +44,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Yetki kontrolü
-    if (!(await hasPermission('personel.goruntule'))) {
+    // Standart personelin (Seviye >= 4) görev atama ve takvim işlemleri için personel listesini görebilmesi gerekir.
+    const canView = await hasPermission('personel.goruntule');
+    if (!canView && user.rol.seviye < 4) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

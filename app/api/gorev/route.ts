@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { prisma } from '@/lib/prisma';
+import { gorevCreateSchema } from '@/lib/validations/gorev';
 
 // Görevleri listele
 export async function GET(request: Request) {
@@ -86,7 +87,20 @@ export async function POST(request: Request) {
         }
 
         const user = session.user as any;
+
+        // Validation with Zod
         const body = await request.json();
+        const validation = gorevCreateSchema.safeParse(body);
+
+        if (!validation.success) {
+            return NextResponse.json({
+                success: false,
+                error: 'Validasyon hatası',
+                details: validation.error.flatten()
+            }, { status: 400 });
+        }
+
+        const data = validation.data;
 
         // Yetki kontrolü: Sadece belli seviye üstü görev atayabilir (örn: seviye >= 7 - Birim Yöneticisi ve üstü)
         if (user.rol?.seviye < 7) {
@@ -119,65 +133,42 @@ export async function POST(request: Request) {
 
         const newKod = `${prefix}${nextSeq.toString().padStart(6, '0')}`;
 
-        // Validate required fields
-        if (!body.sorumlu_id) {
-            return NextResponse.json({ success: false, error: 'Sorumlu personel seçilmedi' }, { status: 400 });
-        }
-
-        const sorumluId = parseInt(body.sorumlu_id);
         const olusturanId = parseInt(user.id);
 
-        // birim_id can be null/undefined for some users
+        // birim_id handling (optional in schema, but derived from user)
         let birimId: number | null = null;
-        if (body.birim_id) {
-            birimId = parseInt(body.birim_id);
+        if ((body as any).birim_id) {
+            birimId = parseInt((body as any).birim_id);
         } else if (user.birim_id) {
             birimId = parseInt(user.birim_id);
         }
 
-        // Debug logging
-        console.log('ID Conversion Debug:', {
-            'body.sorumlu_id': body.sorumlu_id,
-            'user.id': user.id,
-            'user.birim_id': user.birim_id,
-            'body.birim_id': body.birim_id,
-            'sorumluId': sorumluId,
-            'olusturanId': olusturanId,
-            'birimId': birimId,
-            'sorumluId isNaN': isNaN(sorumluId),
-            'olusturanId isNaN': isNaN(olusturanId),
-            'birimId isNaN': birimId !== null && isNaN(birimId)
-        });
-
-        if (isNaN(sorumluId) || isNaN(olusturanId) || (birimId !== null && isNaN(birimId))) {
-            return NextResponse.json({ success: false, error: 'Geçersiz ID değerleri' }, { status: 400 });
+        if (isNaN(olusturanId) || (birimId !== null && isNaN(birimId))) {
+            return NextResponse.json({ success: false, error: 'Kullanıcı ID hatası' }, { status: 400 });
         }
 
         const gorev = await prisma.gorev.create({
             data: {
                 kod: newKod,
-                baslik: body.baslik,
-                aciklama: body.aciklama,
-                oncelik: body.oncelik || 'ORTA',
-                kategori: body.kategori || 'DIGER',
+                baslik: data.baslik,
+                aciklama: data.aciklama,
+                oncelik: data.oncelik,
+                kategori: data.kategori || 'DIGER',
                 durum: 'DEVAM_EDEN',
-                is_suresiz: body.is_suresiz || false,
-                baslangic_tarihi: body.baslangic_tarihi ? new Date(body.baslangic_tarihi) : null,
-                bitis_tarihi: body.bitis_tarihi ? new Date(body.bitis_tarihi) : null,
-                sorumlu_id: sorumluId,
+                is_suresiz: data.is_suresiz,
+                baslangic_tarihi: data.baslangic_tarihi,
+                bitis_tarihi: data.bitis_tarihi,
+                sorumlu_id: data.sorumlu_id, // Already number
                 olusturan_id: olusturanId,
                 birim_id: birimId,
-                gorsel_1: body.gorsel_1,
-                gorsel_1_not: body.gorsel_1_not,
-                gorsel_2: body.gorsel_2,
-                gorsel_2_not: body.gorsel_2_not,
-                gorsel_3: body.gorsel_3,
-                gorsel_3_not: body.gorsel_3_not,
+                gorsel_1: data.gorsel_1,
+                gorsel_1_not: data.gorsel_1_not,
+                gorsel_2: data.gorsel_2,
+                gorsel_2_not: data.gorsel_2_not,
+                gorsel_3: data.gorsel_3,
+                gorsel_3_not: data.gorsel_3_not,
                 destek_verenler: {
-                    connect: body.destek_verenler?.map((id: string) => {
-                        const parsedId = parseInt(id);
-                        return isNaN(parsedId) ? null : { id: parsedId };
-                    }).filter(Boolean) || []
+                    connect: data.destek_verenler?.map((id: number) => ({ id })) || []
                 }
             },
             include: {
@@ -190,11 +181,11 @@ export async function POST(request: Request) {
         // Aktivite logu ekle
         await prisma.aktiviteLog.create({
             data: {
-                personel_id: parseInt(user.id),
+                personel_id: olusturanId,
                 personel_email: user.email,
                 islem: 'gorev.olustur',
                 tablo: 'gorevler',
-                kayit_id: gorev.id.toString(), // Convert to string as schema demands
+                kayit_id: gorev.id.toString(),
                 aciklama: `${newKod} - ${gorev.baslik} başlıklı görev oluşturuldu.`
             }
         });
@@ -203,8 +194,8 @@ export async function POST(request: Request) {
         await prisma.gorevGuncelleme.create({
             data: {
                 gorev_id: gorev.id,
-                personel_id: parseInt(user.id),
-                mesaj: `Görev oluşturuldu. Kod: ${newKod}. ${body.notlar ? `Not: ${body.notlar}` : ''}`,
+                personel_id: olusturanId,
+                mesaj: `Görev oluşturuldu. Kod: ${newKod}.`,
             }
         });
 

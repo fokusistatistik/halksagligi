@@ -11,7 +11,7 @@ const birimSchema = z.object({
   kod: z.string().min(2, 'Birim kodu en az 2 karakter olmalıdır').toUpperCase(),
   tip: z.enum(['MUDURLUK', 'DIS_BIRIM']),
   dis_birim_tip: z.enum(['ASM', 'HSM', 'VSD', 'ILCE_SAGLIK']).optional().nullable(),
-  ust_birim_id: z.string().uuid().optional().nullable(),
+  ust_birim_id: z.string().optional().nullable().or(z.number().optional().nullable()), // Handle both string and number
   telefon: z.string().optional().nullable(),
   email: z.string().email('Geçerli bir email giriniz').optional().or(z.literal('')).nullable(),
   adres: z.string().optional().nullable(),
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         kod: validated.kod,
         tip: validated.tip as 'MUDURLUK' | 'DIS_BIRIM',
         dis_birim_tip: validated.dis_birim_tip as 'ASM' | 'HSM' | 'VSD' | 'ILCE_SAGLIK' | null,
-        ust_birim_id: validated.ust_birim_id,
+        ust_birim_id: validated.ust_birim_id ? parseInt(String(validated.ust_birim_id)) : null,
         telefon: validated.telefon,
         email: validated.email,
         adres: validated.adres,
@@ -132,11 +132,11 @@ export async function POST(request: NextRequest) {
 
     // Activity log
     await logAktivite({
-      personel_id: session.user.id,
+      personel_id: parseInt(session.user.id),
       personel_email: session.user.email ?? undefined,
       islem: 'birim.olustur',
       tablo: 'birimler',
-      kayit_id: yeniBirim.id,
+      kayit_id: yeniBirim.id.toString(),
       aciklama: `Birim oluşturuldu: ${yeniBirim.ad}`
     });
 

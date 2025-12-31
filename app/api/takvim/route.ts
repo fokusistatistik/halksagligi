@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         } else if (isManagement && !targetUserId) {
             // Yönetici tüm personel takvimlerini görebilir
         } else {
-            where.personel_id = user.id;
+            where.personel_id = parseInt(user.id);
         }
 
         if (start && end) {

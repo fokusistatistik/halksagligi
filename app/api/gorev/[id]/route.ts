@@ -17,6 +17,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         const user = session.user as any;
         const body = await request.json();
         const gorevId = parseInt(params.id);
+        const userId = parseInt(user.id);
 
         if (isNaN(gorevId)) {
             return NextResponse.json({ error: 'Geçersiz görev ID' }, { status: 400 });
@@ -31,10 +32,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             return NextResponse.json({ error: 'Görev bulunamadı' }, { status: 404 });
         }
 
-        const isOwner = existingGorev.olusturan_id === user.id;
-        const isResponsible = existingGorev.sorumlu_id === user.id;
+        const isOwner = existingGorev.olusturan_id === userId;
+        const isResponsible = existingGorev.sorumlu_id === userId;
         const isManagement = user.rol?.seviye >= 7; // Birim Yöneticisi ve üstü
-        const isSupport = existingGorev.destek_verenler.some(p => p.id === user.id);
+        const isSupport = existingGorev.destek_verenler.some(p => p.id === userId);
 
         if (!isOwner && !isResponsible && !isManagement && !isSupport) {
             return NextResponse.json({ error: 'Bu görevi inceleme/güncelleme yetkiniz yok' }, { status: 403 });
@@ -50,7 +51,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             await prisma.gorevGuncelleme.create({
                 data: {
                     gorev_id: gorevId,
-                    personel_id: parseInt(user.id),
+                    personel_id: userId,
                     mesaj: body.mesaj,
                     gorsel_url: body.gorsel_url
                 }
@@ -73,14 +74,14 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             // Tamamlanma veya İptal durumunda kayıt al
             if (['TAMAMLANDI', 'IPTAL'].includes(body.durum)) {
                 updateData.tamamlanma_tarihi = new Date();
-                updateData.tamamlayan_id = parseInt(user.id);
+                updateData.tamamlayan_id = userId;
                 if (body.tamamlanma_notu) {
                     updateData.tamamlanma_notu = body.tamamlanma_notu;
                     // Ayrıca log olarak da ekle
                     await prisma.gorevGuncelleme.create({
                         data: {
                             gorev_id: gorevId,
-                            personel_id: parseInt(user.id),
+                            personel_id: userId,
                             mesaj: `Görev ${body.durum === 'IPTAL' ? 'iptal edildi' : 'tamamlandı'}. Not: ${body.tamamlanma_notu}`,
                         }
                     });
@@ -90,7 +91,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                 await prisma.gorevGuncelleme.create({
                     data: {
                         gorev_id: gorevId,
-                        personel_id: parseInt(user.id),
+                        personel_id: userId,
                         mesaj: `Görev durumu değiştirildi: ${existingGorev.durum} -> ${body.durum}`,
                     }
                 });

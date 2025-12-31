@@ -7,7 +7,7 @@ import { authOptions } from '@/lib/auth/options';
 import { prisma } from '@/lib/prisma';
 
 // Etkinlik İptal Et
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(_request: Request, { params }: { params: { id: string } }) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) {
@@ -16,7 +16,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
         const user = session.user as any;
         const etkinlikId = parseInt(params.id);
-        const body = await request.json();
 
         // Etkinliği bul
         const etkinlik = await prisma.takvimEtkinlik.findUnique({
@@ -28,7 +27,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         }
 
         // Sadece kendi etkinliğini iptal edebilir
-        if (etkinlik.personel_id !== user.id) {
+        if (etkinlik.personel_id !== parseInt(user.id)) {
             return NextResponse.json({ error: 'Bu etkinliği iptal etme yetkiniz yok' }, { status: 403 });
         }
 

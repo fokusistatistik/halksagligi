@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     // Birim yöneticisi sadece kendi birimini görebilir
     if (user.rol.kod === 'BIRIM_YONETICISI') {
-      where.birim_id = user.birim_id
+      where.birim_id = user.birim_id ?? undefined
     } else if (birimId) {
       where.birim_id = birimId
     }

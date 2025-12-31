@@ -176,7 +176,7 @@ export async function PUT(
 
     // Activity log
     await logAktivite({
-      personel_id: session.user.id,
+      personel_id: parseInt(session.user.id),
       personel_email: session.user.email ?? undefined,
       islem: 'birim.guncelle',
       tablo: 'birimler',
@@ -296,7 +296,7 @@ export async function DELETE(
 
     // Activity log
     await logAktivite({
-      personel_id: session.user.id,
+      personel_id: parseInt(session.user.id),
       personel_email: session.user.email ?? undefined,
       islem: 'birim.sil',
       tablo: 'birimler',

@@ -64,6 +64,7 @@ export async function PUT(
     if ('id' in rolData) delete rolData.id;
     if ('yetkiler' in rolData) delete rolData.yetkiler;
     if ('_count' in rolData) delete rolData._count;
+    if ('seviye' in rolData) rolData.seviye = parseInt(rolData.seviye);
 
     // Rol bilgilerini güncelle
     await prisma.rol.update({

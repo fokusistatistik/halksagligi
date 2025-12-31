@@ -54,3 +54,8 @@ npm start
 ## ⚠️ Önemli Notlar
 - **Veritabanı:** `prisma/dev.db` dosyası SQLite veritabanıdır ve tüm kullanıcı/görev verilerini içerir. Bu dosyanın silinmemesine dikkat edin.
 - **Resimler:** Eğer `public/uploads` klasörü kullanılıyorsa, bu klasörün de taşındığından emin olun (Git'e eklenmiş durumdadır).
+
+## 📢 Yeni Modül: Duyuru Sistemi
+Duyuru sistemi altyapısı (Veritabanı tabloları: `Duyuru`, `DuyuruOkuma`) veritabanına eklenmiştir.
+- Yeni kurulumdan sonra API ve Arayüz (UI) geliştirmesine devam edilebilir.
+- Veritabanı şeması, sistemin sadece metin tabanlı ve okundu takipli çalışmasına uygun olarak güncellenmiştir.

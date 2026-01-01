@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       {
         headers: {
           'X-API-Key': N8N_API_KEY || '',
-          'X-User-Id': user.id,
+          'X-User-Id': String(user.id),
           'X-User-Role': user.rol.kod,
         }
       }

@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         personel_email: personel.email,
         islem: 'sifre.sifirla.pasif_kullanici',
         tablo: 'personel',
-        kayit_id: personel.id,
+        kayit_id: String(personel.id),
         aciklama: `Pasif kullanıcı için şifre sıfırlama denemesi`,
       });
 
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
           expires_at: tokenExpiry.toISOString(),
         }),
       });
-    } catch (emailError) {
+    } catch (_emailError) {
       // Email gönderimi başarısız olsa bile token oluşturuldu
       // Kullanıcıya success mesajı ver (token DB'de)
     }
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       personel_email: personel.email,
       islem: 'sifre.sifirla.talep',
       tablo: 'personel',
-      kayit_id: personel.id,
+      kayit_id: String(personel.id),
       aciklama: `Şifre sıfırlama talebi oluşturuldu`,
     });
 

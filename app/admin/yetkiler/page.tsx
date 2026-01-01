@@ -165,7 +165,7 @@ export default function YetkilerPage() {
       } else {
         toast.error(data.error || 'Silme başarısız');
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error('Bir hata oluştu');
     }
   };

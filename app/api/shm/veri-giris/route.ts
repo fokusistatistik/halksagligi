@@ -10,8 +10,8 @@ const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.fokusistatis
 
 // Veri giriş validation schema - YENİ YAPI
 const veriGirisSchema = z.object({
-  birim_id: z.string().uuid('Geçerli bir birim seçiniz'),
-  personel_id: z.string().uuid('Geçerli bir personel ID giriniz'),
+  birim_id: z.coerce.number(),
+  personel_id: z.coerce.number(),
   tarih: z.string().refine((val) => !isNaN(Date.parse(val)), 'Geçerli bir tarih giriniz'),
   veri: z.record(z.any()).optional(), // Esnek veri yapısı
   aciklama: z.string().optional(),
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Birim bazlı filtreleme - Dış birim çalışanları sadece kendi birimlerini görebilir
     if (!['ADMIN', 'BASKAN', 'ANALIST'].includes(user.rol.kod)) {
-      if (user.birim.tip === 'DIS_BIRIM') {
+      if (user.birim?.tip === 'DIS_BIRIM') {
         // Dış birimde PERSONEL: Sadece kendi verileri
         if (user.rol.kod === 'PERSONEL') {
           whereClause.birim_id = user.birim_id;
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
           // BIRIM_YONETICISI: Birimin tüm verileri
           whereClause.birim_id = user.birim_id;
         }
-      } else if (user.birim.tip === 'MUDURLUK') {
+      } else if (user.birim?.tip === 'MUDURLUK') {
         // Müdürlük biriminde: Bağlı dış birimlerin verileri
         const bagliBirimler = await prisma.birim.findMany({
           where: { ust_birim_id: user.birim_id },
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     // Yetki kontrolü
     if (!['ADMIN', 'BASKAN', 'ANALIST'].includes(user.rol.kod)) {
-      if (user.birim.tip === 'DIS_BIRIM') {
+      if (user.birim?.tip === 'DIS_BIRIM') {
         // Dış birimde sadece kendi birimine veri girebilir
         if (validated.birim_id !== user.birim_id) {
           return NextResponse.json(
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
             { status: 403 }
           );
         }
-      } else if (user.birim.tip === 'MUDURLUK') {
+      } else if (user.birim?.tip === 'MUDURLUK') {
         // Müdürlük biriminde bağlı dış birimlere veri girebilir
         if (birim.ust_birim_id !== user.birim_id) {
           return NextResponse.json(
@@ -261,9 +261,9 @@ export async function POST(request: NextRequest) {
             role_name: user.rol.ad,
             role_level: user.rol.seviye,
             birim_id: user.birim_id,
-            birim_ad: user.birim.ad,
-            birim_kod: user.birim.kod,
-            birim_tip: user.birim.tip,
+            birim_ad: user.birim?.ad,
+            birim_kod: user.birim?.kod,
+            birim_tip: user.birim?.tip,
             permissions: user.rol.yetkiler.map((ry: any) => ({
               kod: ry.yetki.kod,
               ad: ry.yetki.ad,
@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
       personel_email: user.email,
       islem: 'veri_giris.olustur',
       tablo: 'shm_veri_giris',
-      kayit_id: veriGiris.id,
+      kayit_id: String(veriGiris.id),
       aciklama: `Veri girişi oluşturuldu: ${birim.ad} - ${new Date(validated.tarih).toLocaleDateString('tr-TR')}`
     });
 

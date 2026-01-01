@@ -162,7 +162,7 @@ export async function PUT(
       personel_email: user.email,
       islem: 'personel.guncelle',
       tablo: 'personel',
-      kayit_id: id,
+      kayit_id: String(parsedId),
       aciklama: `Personel güncellendi: ${updatedPersonel.ad} ${updatedPersonel.soyad}`,
     })
 
@@ -218,7 +218,7 @@ export async function DELETE(
       personel_email: user.email,
       islem: 'personel.sil',
       tablo: 'personel',
-      kayit_id: id,
+      kayit_id: String(parsedId),
       aciklama: `Personel silindi`,
     })
 

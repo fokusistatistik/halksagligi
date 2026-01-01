@@ -22,8 +22,8 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,7 +37,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog"
 import { Textarea } from '@/components/ui/textarea';
 
@@ -100,12 +99,10 @@ export default function GorevYonetimPage() {
 
     // Filters
     const [filterSorumlu, setFilterSorumlu] = useState<string>('all');
-    const [dateRange, setDateRange] = useState<Date | undefined>(new Date());
 
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [viewDate, setViewDate] = useState(new Date());
-    const [dayEvents, setDayEvents] = useState<any[]>([]);
 
     // Modals
     const [isGorevModalOpen, setIsGorevModalOpen] = useState(false);
@@ -365,12 +362,6 @@ export default function GorevYonetimPage() {
         } catch (_error) {
             toast.error('Bağlantı hatası');
         }
-    };
-
-    const handleDateChange = (days: number) => {
-        const newDate = new Date(selectedDate || new Date());
-        newDate.setDate(newDate.getDate() + days);
-        setSelectedDate(newDate);
     };
 
     // Helper to generate Google Calendar Link

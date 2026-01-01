@@ -293,7 +293,7 @@ export default function SettingsPage() {
                                         onChange={(e) => setFormData({ ...formData, profil_foto_url: e.target.value })}
                                         placeholder="https://..."
                                     />
-                                    <p className="text-[10px] text-gray-500">Profil fotoğrafınızın herkese açık URL'sini buraya giriniz.</p>
+                                    <p className="text-[10px] text-gray-500">Profil fotoğrafınızın herkese açık URL&apos;sini buraya giriniz.</p>
                                 </div>
 
                                 <div className="space-y-2">

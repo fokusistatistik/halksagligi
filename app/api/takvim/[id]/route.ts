@@ -31,12 +31,27 @@ export async function PUT(_request: Request, { params }: { params: { id: string 
             return NextResponse.json({ error: 'Bu etkinliği iptal etme yetkiniz yok' }, { status: 403 });
         }
 
-        // İptal et
+        const body = await _request.json();
+
+        const updateData: any = {};
+
+        // İptal isteği mi?
+        if (body.action === 'cancel') {
+            updateData.durum = 'IPTAL';
+        } else {
+            // Normal güncelleme
+            if (body.baslik) updateData.baslik = body.baslik;
+            if (body.aciklama) updateData.aciklama = body.aciklama;
+            if (body.baslangic) updateData.baslangic = new Date(body.baslangic);
+            if (body.bitis) updateData.bitis = new Date(body.bitis);
+            if (body.yer) updateData.yer = body.yer;
+            if (body.tip) updateData.tip = body.tip;
+        }
+
+        // İptal et veya güncelle
         const updated = await prisma.takvimEtkinlik.update({
             where: { id: etkinlikId },
-            data: {
-                durum: 'IPTAL'
-            }
+            data: updateData
         });
 
         return NextResponse.json({ success: true, data: updated });

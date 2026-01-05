@@ -1,3 +1,4 @@
+
 import { Gorev, Etkinlik, Personel } from './types';
 
 export const fetchGorevler = async (userId?: string): Promise<Gorev[]> => {
@@ -58,6 +59,17 @@ export const createEtkinlik = async (etkinlikData: any) => {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Etkinlik oluşturulamadı');
+    return data;
+};
+
+export const updateEtkinlik = async ({ id, payload }: { id: string; payload: any }) => {
+    const res = await fetch(`/api/takvim/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Etkinlik güncellenemedi');
     return data;
 };
 

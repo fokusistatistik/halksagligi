@@ -72,10 +72,18 @@ export async function POST(request: Request) {
         // Herkes sadece kendisine etkinlik oluşturabilir
         const targetPersonelId = user.id;
 
-        // Generate Kod (TAKVİM-YY-0000001)
+        const repeatCount = body.repeatCount || 1;
+        const repeatType = body.repeatType; // 'HAFTALIK' | 'AYLIK'
+
+        if (repeatCount > 12) {
+            return NextResponse.json({ error: 'Maksimum tekrar sayısı 12 olabilir' }, { status: 400 });
+        }
+
+        // Generate Kod Prefix (TAKVİM-YY-)
         const currentYear = new Date().getFullYear().toString().slice(-2);
         const prefix = `TAKVİM-${currentYear}-`;
 
+        // Get Last Code
         const lastEtkinlik = await prisma.takvimEtkinlik.findFirst({
             where: {
                 kod: { startsWith: prefix }
@@ -96,26 +104,46 @@ export async function POST(request: Request) {
             }
         }
 
-        const newKod = `${prefix}${nextSeq.toString().padStart(7, '0')}`;
+        const createdEvents = [];
 
-        const etkinlik = await prisma.takvimEtkinlik.create({
-            data: {
-                kod: newKod,
-                baslik: body.baslik,
-                aciklama: body.aciklama,
-                tip: body.tip || 'DIGER',
-                yer: body.yer || 'KURUM_ICI',
-                durum: 'AKTIF',
-                renk: body.renk,
-                baslangic: new Date(body.baslangic),
-                bitis: new Date(body.bitis),
-                tum_gun: body.tum_gun || false,
-                personel_id: parseInt(targetPersonelId),
-                olusturan_id: parseInt(user.id)
+        for (let i = 0; i < repeatCount; i++) {
+            // Calculate Dates
+            const startDate = new Date(body.baslangic);
+            const endDate = new Date(body.bitis);
+
+            if (i > 0) {
+                if (repeatType === 'HAFTALIK') {
+                    startDate.setDate(startDate.getDate() + (i * 7));
+                    endDate.setDate(endDate.getDate() + (i * 7));
+                } else if (repeatType === 'AYLIK') {
+                    startDate.setMonth(startDate.getMonth() + i);
+                    endDate.setMonth(endDate.getMonth() + i);
+                }
             }
-        });
 
-        return NextResponse.json({ success: true, data: etkinlik });
+            const codeSeq = nextSeq + i;
+            const newKod = `${prefix}${codeSeq.toString().padStart(7, '0')}`;
+
+            const etkinlik = await prisma.takvimEtkinlik.create({
+                data: {
+                    kod: newKod,
+                    baslik: body.baslik,
+                    aciklama: body.aciklama,
+                    tip: body.tip || 'DIGER',
+                    yer: body.yer || 'KURUM_ICI',
+                    durum: 'AKTIF',
+                    renk: body.renk,
+                    baslangic: startDate,
+                    bitis: endDate,
+                    tum_gun: body.tum_gun || false,
+                    personel_id: parseInt(targetPersonelId),
+                    olusturan_id: parseInt(user.id)
+                }
+            });
+            createdEvents.push(etkinlik);
+        }
+
+        return NextResponse.json({ success: true, data: createdEvents[0], count: createdEvents.length });
     } catch (error) {
         console.error('Takvim create error:', error);
         return NextResponse.json({ success: false, error: 'Etkinlik oluşturulamadı' }, { status: 500 });

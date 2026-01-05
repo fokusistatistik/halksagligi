@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGorevler, fetchEtkinlikler, fetchPersoneller, createGorev, createEtkinlik, cancelEtkinlik } from './api';
+import { fetchGorevler, fetchEtkinlikler, fetchPersoneller, createGorev, createEtkinlik, cancelEtkinlik, updateEtkinlik } from './api';
 import {
     ClipboardList,
     Calendar as CalendarIcon,
@@ -53,6 +53,8 @@ export default function GorevYonetimPage() {
     const [activeTab, setActiveTab] = useState('list');
     const [subTab, setSubTab] = useState<'DEVAM_EDEN' | 'TAMAMLANDI'>('DEVAM_EDEN');
     const [createStep, setCreateStep] = useState(1);
+    const [createEventStep, setCreateEventStep] = useState(1);
+    const [createPeriodicStep, setCreatePeriodicStep] = useState(1);
     // Filters
     const [filterSorumlu, setFilterSorumlu] = useState<string>('all');
     const [dateRange, setDateRange] = useState<Date | undefined>(new Date());
@@ -64,6 +66,8 @@ export default function GorevYonetimPage() {
     // Modals
     const [isGorevModalOpen, setIsGorevModalOpen] = useState(false);
     const [isEtkinlikModalOpen, setIsEtkinlikModalOpen] = useState(false);
+    const [isPeriodicModalOpen, setIsPeriodicModalOpen] = useState(false);
+    const [isEditingEtkinlik, setIsEditingEtkinlik] = useState(false);
 
     // Forms
     const [newGorev, setNewGorev] = useState({
@@ -79,6 +83,19 @@ export default function GorevYonetimPage() {
         gorsel_1: '', gorsel_1_not: '',
         gorsel_2: '', gorsel_2_not: '',
         gorsel_3: '', gorsel_3_not: ''
+    });
+
+    const [newPeriodicEtkinlik, setNewPeriodicEtkinlik] = useState({
+        baslik: '',
+        aciklama: '',
+        tip: 'TOPLANTI',
+        yer: 'KURUM_ICI' as 'KURUM_ICI' | 'KURUM_DISI',
+        date: new Date().toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '10:00',
+        repeatType: 'HAFTALIK',
+        repeatCount: 1,
+        personel_id: ''
     });
 
     const [newEtkinlik, setNewEtkinlik] = useState({
@@ -152,7 +169,13 @@ export default function GorevYonetimPage() {
         mutationFn: createEtkinlik,
         onSuccess: () => {
             // Etkinlik tarihine git
-            if (newEtkinlik.baslangic) {
+            if (isPeriodicModalOpen && newPeriodicEtkinlik.date) {
+                const eventDate = new Date(newPeriodicEtkinlik.date);
+                setViewDate(eventDate);
+                setSelectedDate(eventDate);
+                setIsPeriodicModalOpen(false);
+                setCreatePeriodicStep(1);
+            } else if (newEtkinlik.baslangic) {
                 const eventDate = new Date(newEtkinlik.baslangic);
                 setViewDate(eventDate);
                 setSelectedDate(eventDate);
@@ -161,6 +184,8 @@ export default function GorevYonetimPage() {
             queryClient.invalidateQueries({ queryKey: ['etkinlikler'] });
             toast.success('Etkinlik başarıyla oluşturuldu');
             setIsEtkinlikModalOpen(false);
+            setCreateEventStep(1);
+
             setNewEtkinlik({
                 baslik: '',
                 aciklama: '',
@@ -186,6 +211,27 @@ export default function GorevYonetimPage() {
         onError: () => toast.error('İptal edilemedi')
     });
 
+    const updateEtkinlikMutation = useMutation({
+        mutationFn: updateEtkinlik,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['etkinlikler'] });
+            toast.success('Etkinlik güncellendi');
+            setIsEtkinlikModalOpen(false);
+            setIsEditingEtkinlik(false);
+            setSelectedEtkinlikId(null);
+            setNewEtkinlik({
+                baslik: '',
+                aciklama: '',
+                tip: 'TOPLANTI',
+                yer: 'KURUM_ICI',
+                baslangic: '',
+                bitis: '',
+                personel_id: ''
+            });
+        },
+        onError: () => toast.error('Güncelleme başarısız')
+    });
+
 
 
     useEffect(() => {
@@ -209,9 +255,55 @@ export default function GorevYonetimPage() {
         createGorevMutation.mutate(newGorev);
     };
 
+    const handlePeriodicSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setCreatePeriodicStep(2);
+    };
+
+    const handlePeriodicConfirm = () => {
+        const startDateTime = new Date(`${newPeriodicEtkinlik.date}T${newPeriodicEtkinlik.startTime}`);
+        const endDateTime = new Date(`${newPeriodicEtkinlik.date}T${newPeriodicEtkinlik.endTime}`);
+
+        createEtkinlikMutation.mutate({
+            baslik: newPeriodicEtkinlik.baslik,
+            aciklama: newPeriodicEtkinlik.aciklama,
+            tip: newPeriodicEtkinlik.tip,
+            yer: newPeriodicEtkinlik.yer,
+            baslangic: startDateTime.toISOString(),
+            bitis: endDateTime.toISOString(),
+            personel_id: newPeriodicEtkinlik.personel_id,
+            repeatCount: newPeriodicEtkinlik.repeatCount,
+            repeatType: newPeriodicEtkinlik.repeatType
+        });
+        setCreatePeriodicStep(1); // Reset for next time
+    };
+
     const handleEtkinlikSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isEditingEtkinlik && selectedEtkinlikId) {
+            updateEtkinlikMutation.mutate({ id: selectedEtkinlikId, payload: newEtkinlik });
+        } else {
+            setCreateEventStep(2);
+        }
+    };
+
+    const handleEtkinlikConfirm = () => {
         createEtkinlikMutation.mutate(newEtkinlik);
+    };
+
+    const handleEditEtkinlik = (etkinlik: Etkinlik) => {
+        setNewEtkinlik({
+            baslik: etkinlik.baslik,
+            aciklama: etkinlik.aciklama || '',
+            tip: etkinlik.tip,
+            yer: etkinlik.yer || 'KURUM_ICI',
+            baslangic: new Date(etkinlik.baslangic).toISOString().slice(0, 16),
+            bitis: new Date(etkinlik.bitis).toISOString().slice(0, 16),
+            personel_id: etkinlik.personel_id
+        });
+        setIsEditingEtkinlik(true);
+        setSelectedEtkinlikId(etkinlik.id);
+        setIsEtkinlikModalOpen(true);
     };
 
     const handleTaskUpdate = (updatedTask: Gorev | null) => {
@@ -331,16 +423,31 @@ export default function GorevYonetimPage() {
                             </Button>
                         )}
                         {activeTab === 'calendar' && (
-                            <Button
-                                onClick={() => {
-                                    setNewEtkinlik({ ...newEtkinlik, personel_id: user?.id || '' });
-                                    setIsEtkinlikModalOpen(true);
-                                }}
-                                className="h-9 px-4 bg-purple-600 text-white hover:bg-purple-700 rounded-lg font-bold text-xs shadow-lg shadow-purple-600/20 transition-all hover:scale-105 active:scale-95"
-                            >
-                                <Plus className="w-4 h-4 mr-2" />
-                                YENİ ETKİNLİK
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={() => {
+                                        setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, personel_id: user?.id || '' });
+                                        setCreatePeriodicStep(1);
+                                        setIsPeriodicModalOpen(true);
+                                    }}
+                                    className="h-9 px-4 bg-teal-600 text-white hover:bg-teal-700 rounded-lg font-bold text-xs shadow-lg shadow-teal-600/20 transition-all hover:scale-105 active:scale-95"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    PERİYODİK ETKİNLİK
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        setNewEtkinlik({ ...newEtkinlik, personel_id: user?.id || '' });
+                                        setIsEditingEtkinlik(false);
+                                        setCreateEventStep(1);
+                                        setIsEtkinlikModalOpen(true);
+                                    }}
+                                    className="h-9 px-4 bg-purple-600 text-white hover:bg-purple-700 rounded-lg font-bold text-xs shadow-lg shadow-purple-600/20 transition-all hover:scale-105 active:scale-95"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    YENİ ETKİNLİK
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -481,7 +588,31 @@ export default function GorevYonetimPage() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                {gorev.bitis_tarihi && (
+                                                {gorev.durum === 'TAMAMLANDI' ? (
+                                                    <div className="px-4 py-2 text-[10px] font-bold bg-green-100 text-green-700 flex items-center justify-between border-t border-green-200">
+                                                        <div className="flex items-center gap-1">
+                                                            <CheckCircle2 className="w-3 h-3" />
+                                                            Tamamlandı
+                                                        </div>
+                                                        {gorev.tamamlanma_tarihi && (
+                                                            <span className="opacity-90">
+                                                                {new Date(gorev.tamamlanma_tarihi).toLocaleDateString('tr-TR')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : gorev.durum === 'IPTAL' ? (
+                                                    <div className="px-4 py-2 text-[10px] font-bold bg-gray-100 text-gray-500 flex items-center justify-between border-t border-gray-200">
+                                                        <div className="flex items-center gap-1">
+                                                            <XCircle className="w-3 h-3" />
+                                                            İptal Edildi
+                                                        </div>
+                                                        {gorev.tamamlanma_tarihi && (
+                                                            <span className="opacity-90">
+                                                                {new Date(gorev.tamamlanma_tarihi).toLocaleDateString('tr-TR')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : gorev.bitis_tarihi ? (
                                                     <div className={`px-4 py-2 text-[10px] font-bold flex items-center justify-between ${getDateColorClass(gorev.bitis_tarihi)}`}>
                                                         <div className="flex items-center gap-1">
                                                             <Clock className="w-3 h-3" />
@@ -495,8 +626,7 @@ export default function GorevYonetimPage() {
                                                             </span>
                                                         )}
                                                     </div>
-                                                )}
-                                                {!gorev.bitis_tarihi && (
+                                                ) : (
                                                     <div className="px-4 py-2 text-[10px] font-bold bg-gray-50 text-gray-400 flex items-center gap-1">
                                                         <Clock className="w-3 h-3" /> Süresiz
                                                     </div>
@@ -570,6 +700,8 @@ export default function GorevYonetimPage() {
                                                 const date = new Date(year, month, d);
                                                 const isToday = new Date().toDateString() === date.toDateString();
                                                 const isSelected = selectedDate?.toDateString() === date.toDateString();
+                                                const dayOfWeek = date.getDay();
+                                                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
                                                 // Find tasks
                                                 const dayTasks = gorevler.filter(g => {
@@ -604,14 +736,14 @@ export default function GorevYonetimPage() {
                                                 });
 
                                                 const totalCount = dayTasks.length + dayEvents.length;
-                                                const displayLimit = 3;
+                                                const displayLimit = 5;
 
                                                 days.push(
                                                     <div
                                                         key={d}
                                                         onClick={() => setSelectedDate(date)}
-                                                        className={`p-2 rounded-xl border text-xs relative cursor-pointer transition-all hover:shadow-md flex flex-col gap-1 min-h-[90px] ${isSelected ? 'ring-2 ring-primary border-primary bg-primary/5' : 'border-gray-100 bg-white'
-                                                            } ${isToday ? 'bg-blue-50/50' : ''}`}
+                                                        className={`p-2 rounded-xl border text-xs relative cursor-pointer transition-all hover:shadow-md flex flex-col gap-1 min-h-[115px] ${isSelected ? 'ring-2 ring-primary border-primary bg-primary/5' : 'border-gray-100 bg-white'
+                                                            } ${isToday ? 'bg-blue-50/50' : ''} ${isWeekend ? 'bg-gray-100/60' : ''}`}
                                                     >
                                                         <div className={`font-bold flex justify-between items-start ${isToday ? 'text-primary' : 'text-gray-700'}`}>
                                                             <span>{d}</span>
@@ -951,107 +1083,342 @@ export default function GorevYonetimPage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isEtkinlikModalOpen} onOpenChange={setIsEtkinlikModalOpen}>
+            <Dialog open={isPeriodicModalOpen} onOpenChange={setIsPeriodicModalOpen}>
                 <DialogContent>
-                    <form onSubmit={handleEtkinlikSubmit}>
-                        <DialogHeader>
-                            <DialogTitle>Yeni Etkinlik Oluştur</DialogTitle>
-                            <DialogDescription>Kişisel takviminize yeni bir etkinlik ekleyin.</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="space-y-1">
-                                <Label>Etkinlik Başlığı</Label>
-                                <Input
-                                    required
-                                    minLength={5}
-                                    maxLength={50}
-                                    value={newEtkinlik.baslik}
-                                    onChange={(e) => setNewEtkinlik({ ...newEtkinlik, baslik: e.target.value })}
-                                    placeholder="En az 5, en fazla 50 karakter"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                    {createPeriodicStep === 1 && (
+                        <form onSubmit={handlePeriodicSubmit}> (etc...)
+                            <DialogHeader>
+                                <DialogTitle>Periyodik Etkinlik Oluştur</DialogTitle>
+                                <DialogDescription>Belirli bir düzende tekrar eden etkinlik serisi oluşturun.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
                                 <div className="space-y-1">
-                                    <Label>Etkinlik Tipi</Label>
-                                    <Select value={newEtkinlik.tip} onValueChange={(val) => setNewEtkinlik({ ...newEtkinlik, tip: val })}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="TOPLANTI">Toplantı</SelectItem>
-                                            <SelectItem value="EGITIM">Eğitim</SelectItem>
-                                            <SelectItem value="ZIYARET">Ziyaret</SelectItem>
-                                            <SelectItem value="STAND">Stand</SelectItem>
-                                            <SelectItem value="TARAMA">Tarama</SelectItem>
-                                            <SelectItem value="DENETIM">Denetim</SelectItem>
-                                            <SelectItem value="IZIN">İzin</SelectItem>
-                                            <SelectItem value="DIGER">Diğer</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label>Etkinlik Başlığı</Label>
+                                    <Input
+                                        required
+                                        minLength={5}
+                                        maxLength={50}
+                                        value={newPeriodicEtkinlik.baslik}
+                                        onChange={(e) => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, baslik: e.target.value })}
+                                        placeholder="En az 5, en fazla 50 karakter"
+                                    />
                                 </div>
-                                <div className="space-y-1">
-                                    <Label>Yer</Label>
-                                    <div className="flex gap-4 pt-2">
-                                        <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="yer"
-                                                checked={newEtkinlik.yer === 'KURUM_ICI'}
-                                                onChange={() => setNewEtkinlik({ ...newEtkinlik, yer: 'KURUM_ICI' })}
-                                            />
-                                            Kurum İçi
-                                        </label>
-                                        <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="yer"
-                                                checked={newEtkinlik.yer === 'KURUM_DISI'}
-                                                onChange={() => setNewEtkinlik({ ...newEtkinlik, yer: 'KURUM_DISI' })}
-                                            />
-                                            Kurum Dışı
-                                        </label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <Label>Etkinlik Tipi</Label>
+                                        <Select value={newPeriodicEtkinlik.tip} onValueChange={(val) => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, tip: val })}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="TOPLANTI">Toplantı</SelectItem>
+                                                <SelectItem value="EGITIM">Eğitim</SelectItem>
+                                                <SelectItem value="ZIYARET">Ziyaret</SelectItem>
+                                                <SelectItem value="STAND">Stand</SelectItem>
+                                                <SelectItem value="TARAMA">Tarama</SelectItem>
+                                                <SelectItem value="DENETIM">Denetim</SelectItem>
+                                                <SelectItem value="IZIN">İzin</SelectItem>
+                                                <SelectItem value="DIGER">Diğer</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Yer</Label>
+                                        <div className="flex gap-4 pt-2">
+                                            <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="periodic_yer"
+                                                    checked={newPeriodicEtkinlik.yer === 'KURUM_ICI'}
+                                                    onChange={() => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, yer: 'KURUM_ICI' })}
+                                                />
+                                                Kurum İçi
+                                            </label>
+                                            <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="periodic_yer"
+                                                    checked={newPeriodicEtkinlik.yer === 'KURUM_DISI'}
+                                                    onChange={() => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, yer: 'KURUM_DISI' })}
+                                                />
+                                                Kurum Dışı
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+
                                 <div className="space-y-1">
-                                    <Label>Başlangıç</Label>
+                                    <Label>Tarih (İlk Etkinlik)</Label>
                                     <Input
-                                        type="datetime-local"
+                                        type="date"
                                         required
-                                        min={new Date().toISOString().slice(0, 16)}
-                                        value={newEtkinlik.baslangic}
-                                        onChange={(e) => setNewEtkinlik({ ...newEtkinlik, baslangic: e.target.value })}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        value={newPeriodicEtkinlik.date}
+                                        onChange={(e) => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, date: e.target.value })}
                                     />
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <Label>Başlangıç Saati</Label>
+                                        <Input
+                                            type="time"
+                                            required
+                                            value={newPeriodicEtkinlik.startTime}
+                                            onChange={(e) => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, startTime: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Bitiş Saati</Label>
+                                        <Input
+                                            type="time"
+                                            required
+                                            value={newPeriodicEtkinlik.endTime}
+                                            onChange={(e) => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, endTime: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 bg-teal-50 p-3 rounded-lg border border-teal-100">
+                                    <div className="space-y-1">
+                                        <Label className="text-teal-900">Tekrar Tipi</Label>
+                                        <Select value={newPeriodicEtkinlik.repeatType} onValueChange={(val) => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, repeatType: val })}>
+                                            <SelectTrigger className="border-teal-200"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="HAFTALIK">Haftalık</SelectItem>
+                                                <SelectItem value="AYLIK">Aylık</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-teal-900">Tekrar Sayısı (Max 12)</Label>
+                                        <Input
+                                            type="number"
+                                            min={2}
+                                            max={12}
+                                            required
+                                            className="border-teal-200"
+                                            value={newPeriodicEtkinlik.repeatCount}
+                                            onChange={(e) => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, repeatCount: parseInt(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="space-y-1">
-                                    <Label>Bitiş</Label>
-                                    <Input
-                                        type="datetime-local"
-                                        required
-                                        min={newEtkinlik.baslangic || new Date().toISOString().slice(0, 16)}
-                                        value={newEtkinlik.bitis}
-                                        onChange={(e) => setNewEtkinlik({ ...newEtkinlik, bitis: e.target.value })}
+                                    <Label>Notlar (Opsiyonel)</Label>
+                                    <Textarea
+                                        maxLength={1000}
+                                        value={newPeriodicEtkinlik.aciklama}
+                                        onChange={(e) => setNewPeriodicEtkinlik({ ...newPeriodicEtkinlik, aciklama: e.target.value })}
+                                        placeholder="En fazla 1000 karakter"
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-1">
-                                <Label>Notlar (Opsiyonel)</Label>
-                                <Textarea
-                                    maxLength={1000}
-                                    value={newEtkinlik.aciklama}
-                                    onChange={(e) => setNewEtkinlik({ ...newEtkinlik, aciklama: e.target.value })}
-                                    placeholder="En fazla 1000 karakter"
-                                />
+                            <DialogFooter>
+                                <Button type="submit" className="bg-teal-600 hover:bg-teal-700">İlerle</Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                    {createPeriodicStep === 2 && (
+                        <div className="space-y-6 py-4">
+                            <DialogHeader>
+                                <DialogTitle>Onay: Periyodik Etkinlik</DialogTitle>
+                                <DialogDescription>Etkinlik detaylarını kontrol edip onaylayın.</DialogDescription>
+                            </DialogHeader>
+                            <div className="bg-teal-50 p-6 rounded-xl border border-teal-200 space-y-4 text-sm">
+                                <h3 className="font-bold text-lg text-teal-900">{newPeriodicEtkinlik.baslik}</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="block text-xs font-bold text-teal-700 uppercase">Tip & Yer</span>
+                                        <span>{newPeriodicEtkinlik.tip} - {newPeriodicEtkinlik.yer === 'KURUM_ICI' ? 'Kurum İçi' : 'Kurum Dışı'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-bold text-teal-700 uppercase">Döngü</span>
+                                        <span>{newPeriodicEtkinlik.repeatCount} Kez ({newPeriodicEtkinlik.repeatType})</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-bold text-teal-700 uppercase">Zaman</span>
+                                        <span>{newPeriodicEtkinlik.startTime} - {newPeriodicEtkinlik.endTime}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-bold text-teal-700 uppercase">Başlangıç</span>
+                                        <span>{new Date(newPeriodicEtkinlik.date).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                                {newPeriodicEtkinlik.aciklama && (
+                                    <div className="pt-2 border-t border-teal-200/50">
+                                        <span className="block text-xs font-bold text-teal-700 uppercase">Notlar</span>
+                                        <p className="text-gray-700">{newPeriodicEtkinlik.aciklama}</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <Button variant="outline" onClick={() => setCreatePeriodicStep(1)}>Geri Dön</Button>
+                                <Button onClick={handlePeriodicConfirm} className="bg-teal-600 hover:bg-teal-700 font-bold">
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    ONAYLA VE OLUŞTUR
+                                </Button>
                             </div>
                         </div>
-                        <DialogFooter>
-                            <Button type="submit">Oluştur</Button>
-                        </DialogFooter>
-                    </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isEtkinlikModalOpen} onOpenChange={setIsEtkinlikModalOpen}>
+                <DialogContent>
+                    {createEventStep === 1 && (
+                        <form onSubmit={handleEtkinlikSubmit}>
+                            <DialogHeader>
+                                <DialogTitle>{isEditingEtkinlik ? 'Etkinliği Düzenle' : 'Yeni Etkinlik Oluştur'}</DialogTitle>
+                                <DialogDescription>Kişisel takviminize yeni bir etkinlik ekleyin.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="space-y-1">
+                                    <Label>Etkinlik Başlığı</Label>
+                                    <Input
+                                        required
+                                        minLength={5}
+                                        maxLength={50}
+                                        value={newEtkinlik.baslik}
+                                        onChange={(e) => setNewEtkinlik({ ...newEtkinlik, baslik: e.target.value })}
+                                        placeholder="En az 5, en fazla 50 karakter"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <Label>Etkinlik Tipi</Label>
+                                        <Select value={newEtkinlik.tip} onValueChange={(val) => setNewEtkinlik({ ...newEtkinlik, tip: val })}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="TOPLANTI">Toplantı</SelectItem>
+                                                <SelectItem value="EGITIM">Eğitim</SelectItem>
+                                                <SelectItem value="ZIYARET">Ziyaret</SelectItem>
+                                                <SelectItem value="STAND">Stand</SelectItem>
+                                                <SelectItem value="TARAMA">Tarama</SelectItem>
+                                                <SelectItem value="DENETIM">Denetim</SelectItem>
+                                                <SelectItem value="IZIN">İzin</SelectItem>
+                                                <SelectItem value="DIGER">Diğer</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Yer</Label>
+                                        <div className="flex gap-4 pt-2">
+                                            <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="yer"
+                                                    checked={newEtkinlik.yer === 'KURUM_ICI'}
+                                                    onChange={() => setNewEtkinlik({ ...newEtkinlik, yer: 'KURUM_ICI' })}
+                                                />
+                                                Kurum İçi
+                                            </label>
+                                            <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="yer"
+                                                    checked={newEtkinlik.yer === 'KURUM_DISI'}
+                                                    onChange={() => setNewEtkinlik({ ...newEtkinlik, yer: 'KURUM_DISI' })}
+                                                />
+                                                Kurum Dışı
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <Label>Başlangıç {isEditingEtkinlik && <span className="text-red-500 text-[10px]">(Değiştirilemez)</span>}</Label>
+                                        <Input
+                                            type="datetime-local"
+                                            required
+                                            disabled={isEditingEtkinlik}
+                                            min={new Date().toISOString().slice(0, 16)}
+                                            value={newEtkinlik.baslangic}
+                                            onChange={(e) => setNewEtkinlik({ ...newEtkinlik, baslangic: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Bitiş {isEditingEtkinlik && <span className="text-red-500 text-[10px]">(Değiştirilemez)</span>}</Label>
+                                        <Input
+                                            type="datetime-local"
+                                            required
+                                            disabled={isEditingEtkinlik}
+                                            min={newEtkinlik.baslangic || new Date().toISOString().slice(0, 16)}
+                                            value={newEtkinlik.bitis}
+                                            onChange={(e) => setNewEtkinlik({ ...newEtkinlik, bitis: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Notlar (Opsiyonel)</Label>
+                                    <Textarea
+                                        maxLength={1000}
+                                        value={newEtkinlik.aciklama}
+                                        onChange={(e) => setNewEtkinlik({ ...newEtkinlik, aciklama: e.target.value })}
+                                        placeholder="En fazla 1000 karakter"
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter className="flex gap-2 justify-end">
+                                {isEditingEtkinlik && (
+                                    <Button type="button" variant="destructive" onClick={() => {
+                                        if (selectedEtkinlikId) {
+                                            if (confirm("Etkinliği iptal etmek istediğinize emin misiniz?")) {
+                                                cancelEtkinlikMutation.mutate(selectedEtkinlikId);
+                                                setIsEtkinlikModalOpen(false);
+                                            }
+                                        }
+                                    }}>
+                                        Etkinliği İptal Et
+                                    </Button>
+                                )}
+                                <Button type="submit">{isEditingEtkinlik ? 'Güncelle' : 'İlerle'}</Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+
+                    {createEventStep === 2 && !isEditingEtkinlik && (
+                        <div className="space-y-6 py-4">
+                            <DialogHeader>
+                                <DialogTitle>Onay: Yeni Etkinlik</DialogTitle>
+                                <DialogDescription>Lütfen bilgileri kontrol edip onaylayın.</DialogDescription>
+                            </DialogHeader>
+                            <div className="bg-purple-50 p-6 rounded-xl border border-purple-200 space-y-4 text-sm">
+                                <h3 className="font-bold text-lg text-purple-900">{newEtkinlik.baslik}</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="block text-xs font-bold text-purple-700 uppercase">Tip & Yer</span>
+                                        <span>{newEtkinlik.tip} - {newEtkinlik.yer === 'KURUM_ICI' ? 'Kurum İçi' : 'Kurum Dışı'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs font-bold text-purple-700 uppercase">Zaman</span>
+                                        <span className="text-xs">
+                                            {new Date(newEtkinlik.baslangic).toLocaleString()}
+                                            <br />
+                                            {new Date(newEtkinlik.bitis).toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                                {newEtkinlik.aciklama && (
+                                    <div className="pt-2 border-t border-purple-200/50">
+                                        <span className="block text-xs font-bold text-purple-700 uppercase">Notlar</span>
+                                        <p className="text-gray-700">{newEtkinlik.aciklama}</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <Button variant="outline" onClick={() => setCreateEventStep(1)}>Geri Dön</Button>
+                                <Button onClick={handleEtkinlikConfirm} className="bg-purple-600 hover:bg-purple-700 font-bold">
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    ONAYLA VE OLUŞTUR
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
 
             {/* Event Detail Modal */}
-            <Dialog open={!!selectedEtkinlik} onOpenChange={(open) => !open && setSelectedEtkinlik(null)}>
+            < Dialog open={!!selectedEtkinlik
+            } onOpenChange={(open) => !open && setSelectedEtkinlik(null)}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="flex justify-between items-center">
@@ -1096,19 +1463,31 @@ export default function GorevYonetimPage() {
                                     </a>
                                 </Button>
                                 {selectedEtkinlik.personel_id === user?.id && (
-                                    <Button
-                                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                                        onClick={() => handleCancelEtkinlik(selectedEtkinlik.id)}
-                                    >
-                                        <XCircle className="w-4 h-4 mr-2" />
-                                        Etkinliği İptal Et
-                                    </Button>
+                                    <>
+                                        <Button
+                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                            onClick={() => {
+                                                setIsEtkinlikModalOpen(false); // Close detail modal (auto handled by state but ensuring logic flow)
+                                                handleEditEtkinlik(selectedEtkinlik);
+                                            }}
+                                        >
+                                            <Edit className="w-4 h-4 mr-2" />
+                                            Düzenle
+                                        </Button>
+                                        <Button
+                                            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                                            onClick={() => handleCancelEtkinlik(selectedEtkinlik.id)}
+                                        >
+                                            <XCircle className="w-4 h-4 mr-2" />
+                                            İptal
+                                        </Button>
+                                    </>
                                 )}
                             </div>
                         </div>
                     )}
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             <TaskDetailModal
                 task={selectedGorev}
@@ -1120,7 +1499,7 @@ export default function GorevYonetimPage() {
                 isManagement={isManagement}
                 isLevel9={isLevel9}
             />
-        </div>
+        </div >
 
     );
 }

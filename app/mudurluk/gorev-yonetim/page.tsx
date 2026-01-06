@@ -41,7 +41,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 import { TaskDetailModal } from './components/modals/task-detail-modal';
 import { TaskFilters } from './components/task-filters';
-import { Gorev, Etkinlik, Personel } from './types';
+import { Gorev, Etkinlik } from './types';
 
 export default function GorevYonetimPage() {
     // --- State ---
@@ -57,11 +57,8 @@ export default function GorevYonetimPage() {
     const [createPeriodicStep, setCreatePeriodicStep] = useState(1);
     // Filters
     const [filterSorumlu, setFilterSorumlu] = useState<string>('all');
-    const [dateRange, setDateRange] = useState<Date | undefined>(new Date());
-
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [viewDate, setViewDate] = useState(new Date());
-    const [dayEvents, setDayEvents] = useState<any[]>([]);
 
     // Modals
     const [isGorevModalOpen, setIsGorevModalOpen] = useState(false);
@@ -313,11 +310,7 @@ export default function GorevYonetimPage() {
         queryClient.invalidateQueries({ queryKey: ['gorevler'] });
     };
 
-    const handleDateChange = (days: number) => {
-        const newDate = new Date(selectedDate || new Date());
-        newDate.setDate(newDate.getDate() + days);
-        setSelectedDate(newDate);
-    };
+
 
     // Helper to generate Google Calendar Link
     const getGoogleCalendarLink = (e: Etkinlik) => {
@@ -1359,7 +1352,7 @@ export default function GorevYonetimPage() {
                             </div>
                             <DialogFooter className="flex gap-2 justify-end">
                                 {isEditingEtkinlik && (
-                                    <Button type="button" variant="destructive" onClick={() => {
+                                    <Button type="button" variant="danger" onClick={() => {
                                         if (selectedEtkinlikId) {
                                             if (confirm("Etkinliği iptal etmek istediğinize emin misiniz?")) {
                                                 cancelEtkinlikMutation.mutate(selectedEtkinlikId);

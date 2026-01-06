@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
         personel_email: resetToken.email,
         islem: 'sifre.yenile.kullanilmis_token',
         tablo: 'personel',
-        kayit_id: resetToken.personel_id,
+        kayit_id: String(resetToken.personel_id),
         aciklama: `Kullanılmış token ile şifre yenileme denemesi`,
       });
 
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         personel_email: resetToken.email,
         islem: 'sifre.yenile.suresi_dolmus_token',
         tablo: 'personel',
-        kayit_id: resetToken.personel_id,
+        kayit_id: String(resetToken.personel_id),
         aciklama: `Süresi dolmuş token ile şifre yenileme denemesi`,
       });
 
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       personel_email: personel.email,
       islem: 'sifre.yenile',
       tablo: 'personel',
-      kayit_id: personel.id,
+      kayit_id: String(personel.id),
       aciklama: `Şifre token ile yenilendi`,
     });
 

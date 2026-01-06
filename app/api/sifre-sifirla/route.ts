@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         personel_email: personel.email,
         islem: 'sifre.sifirla.pasif_kullanici',
         tablo: 'personel',
-        kayit_id: personel.id,
+        kayit_id: String(personel.id),
         aciklama: `Pasif kullanıcı için şifre sıfırlama denemesi`,
       });
 
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       personel_email: personel.email,
       islem: 'sifre.sifirla.talep',
       tablo: 'personel',
-      kayit_id: personel.id,
+      kayit_id: String(personel.id),
       aciklama: `Şifre sıfırlama talebi oluşturuldu`,
     });
 

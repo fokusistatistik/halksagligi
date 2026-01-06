@@ -23,7 +23,8 @@ export async function GET(request: Request) {
         const isManagement = user.rol?.seviye >= 9;
 
         const where: any = {
-            durum: { not: 'IPTAL' } // İptal edilenleri gösterme
+            durum: { not: 'IPTAL' }, // İptal edilenleri gösterme
+            deleted_at: null
         };
 
         if (targetUserId && isManagement) {

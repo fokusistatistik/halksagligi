@@ -48,7 +48,10 @@ export async function GET(request: Request) {
         }
 
         const gorevler = await prisma.gorev.findMany({
-            where,
+            where: {
+                ...where,
+                deleted_at: null
+            },
             include: {
                 sorumlu: {
                     select: { id: true, ad: true, soyad: true, profil_foto_url: true, unvan: true }

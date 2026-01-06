@@ -1,8 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { MapPin, FileText, ClipboardList } from 'lucide-react';
-import Link from 'next/link';
+import { MapPin, ClipboardList } from 'lucide-react';
 
 export default function IlceSaglikDashboard() {
     const { data: session } = useSession();

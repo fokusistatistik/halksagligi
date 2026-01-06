@@ -5,8 +5,8 @@ import { logAktivite } from '@/lib/log';
 import { getCurrentUser } from '@/lib/auth/permissions';
 
 const onaySchema = z.object({
-  veri_giris_id: z.string().uuid(),
-  onaylayan_personel_id: z.string().uuid(),
+  veri_giris_id: z.coerce.number(),
+  onaylayan_personel_id: z.coerce.number(),
   onay_durumu: z.enum(['ONAYLANDI', 'REDDEDILDI']),
   onay_notu: z.string().optional(),
   red_gerekce: z.string().optional() // YENİ: Red için gerekçe
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       personel_email: user?.email,
       islem: `veri_giris.${validated.onay_durumu.toLowerCase()}`,
       tablo: 'shm_veri_giris',
-      kayit_id: validated.veri_giris_id,
+      kayit_id: String(validated.veri_giris_id),
       aciklama: validated.onay_durumu === 'ONAYLANDI'
         ? `Veri girişi onaylandı`
         : `Veri girişi reddedildi: ${validated.red_gerekce}`

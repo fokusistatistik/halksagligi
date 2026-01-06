@@ -1,7 +1,7 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/permissions';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 // Validation Schema
@@ -9,8 +9,8 @@ const duyuruSchema = z.object({
     baslik: z.string().min(1).max(100),
     icerik: z.string().min(1).max(300),
     oncelik: z.enum(['NORMAL', 'ACIL', 'KRITIK']).default('NORMAL'),
-    hedef_birim_id: z.number().nullable().optional(),
-    hedef_rol_id: z.number().nullable().optional(),
+    hedef_birim_ids: z.array(z.number()).optional(),
+    hedef_rol_ids: z.array(z.number()).optional(),
 });
 
 /**
@@ -32,27 +32,70 @@ export async function GET(request: NextRequest) {
         if (mode === 'management' && isManagement) {
             // YÖNETİM MODU: Sadece kendi yayınladıklarımı veya tümünü (İleride)
             const duyurular = await prisma.duyuru.findMany({
-                where: { yayinlayan_id: user.id },
+                where: {
+                    yayinlayan_id: user.id,
+                    deleted_at: null
+                },
                 include: {
-                    hedef_birim: { select: { ad: true } },
-                    hedef_rol: { select: { ad: true } },
+                    hedef_birimler: {
+                        include: { birim: { select: { ad: true } } }
+                    },
+                    hedef_roller: {
+                        include: { rol: { select: { ad: true } } }
+                    },
                     _count: { select: { okunma_loglari: true } }
                 },
                 orderBy: { yayin_tarihi: 'desc' },
                 take: 50
             });
-            return NextResponse.json({ success: true, data: duyurular });
+
+            // Format for Frontend
+            const formatted = duyurular.map(d => ({
+                id: d.id,
+                baslik: d.baslik,
+                icerik: d.icerik,
+                oncelik: d.oncelik,
+                yayin_tarihi: d.yayin_tarihi,
+                hedef_birim: d.hedef_birimler.length > 0 ? { ad: d.hedef_birimler.map(hb => hb.birim.ad).join(", ") } : null,
+                hedef_rol: d.hedef_roller.length > 0 ? { ad: d.hedef_roller.map(hr => hr.rol.ad).join(", ") } : null,
+                _count: d._count
+            }));
+
+            return NextResponse.json({ success: true, data: formatted });
         } else {
             // KULLANICI MODU: Bana uygun duyurular
-            const whereClause = {
+            const orConditions: Prisma.DuyuruWhereInput[] = [
+                {
+                    AND: [
+                        { hedef_birimler: { none: {} } },
+                        { hedef_roller: { none: {} } },
+                        { deleted_at: null }
+                    ]
+                }
+            ];
+
+            if (user.birim_id) {
+                // Asserting user.birim_id is number because of logic check
+                orConditions.push({
+                    hedef_birimler: {
+                        some: { birim_id: user.birim_id }
+                    }
+                });
+            }
+
+            if (user.rol.id) {
+                orConditions.push({
+                    hedef_roller: {
+                        some: { rol_id: user.rol.id }
+                    }
+                });
+            }
+
+            const whereClause: Prisma.DuyuruWhereInput = {
                 AND: [
                     {
-                        // Hedefleme kontrolü: Herkes OR Kendi Birimim OR Kendi Rolüm
-                        OR: [
-                            { hedef_birim_id: null, hedef_rol_id: null }, // Herkese
-                            { hedef_birim_id: user.birim_id },
-                            { hedef_rol_id: user.rol.id }
-                        ]
+                        // Hedefleme kontrolü: 
+                        OR: orConditions
                     },
                     {
                         // Geçerlilik tarihi kontrolü
@@ -128,7 +171,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 });
         }
 
-        const { baslik, icerik, oncelik, hedef_birim_id, hedef_rol_id } = result.data;
+        const { baslik, icerik, oncelik, hedef_birim_ids, hedef_rol_ids } = result.data;
 
         // Geçerlilik tarihi: Varsayılan 7 gün
         const gecerlilik = new Date();
@@ -139,10 +182,14 @@ export async function POST(request: NextRequest) {
                 baslik,
                 icerik,
                 oncelik,
-                hedef_birim_id,
-                hedef_rol_id,
                 yayinlayan_id: user.id,
-                gecerlilik_tarihi: gecerlilik
+                gecerlilik_tarihi: gecerlilik,
+                hedef_birimler: {
+                    create: hedef_birim_ids?.map(id => ({ birim_id: id })) || []
+                },
+                hedef_roller: {
+                    create: hedef_rol_ids?.map(id => ({ rol_id: id })) || []
+                }
             }
         });
 

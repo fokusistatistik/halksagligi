@@ -210,8 +210,9 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
             return NextResponse.json({ error: 'Bu görevi silme yetkiniz yok' }, { status: 403 });
         }
 
-        await prisma.gorev.delete({
-            where: { id: gorevId }
+        await prisma.gorev.update({
+            where: { id: gorevId },
+            data: { deleted_at: new Date() }
         });
 
         return NextResponse.json({ success: true, message: 'Görev başarıyla silindi' });

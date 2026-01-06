@@ -103,7 +103,7 @@ model Rol {
   // İLİŞKİLER
   personeller Personel[]
   yetkiler    RolYetki[]
-  duyurular   Duyuru[]
+  duyurular   DuyuruHedefRol[]
 
   // ZAMAN DAMGALARI
   created_at DateTime @default(now())
@@ -188,7 +188,7 @@ model Birim {
   personeller    Personel[]
   veri_girisleri SHMVeriGiris[] @relation("BirimVeriGiris") // Dış birimlerin verilerini takip eder
   gorevler       Gorev[]
-  duyurular      Duyuru[]
+  duyurular      DuyuruHedefBirim[]
 
   // ZAMAN DAMGALARI
   created_at DateTime @default(now())
@@ -347,6 +347,7 @@ model Gorev {
   @@index([olusturan_id])
   @@index([durum])
   @@index([kod])
+  deleted_at  DateTime?
   @@map("gorevler")
 }
 
@@ -401,6 +402,7 @@ model TakvimEtkinlik {
   @@index([personel_id])
   @@index([baslangic])
   @@index([kod])
+  deleted_at  DateTime?
   @@map("takvim_etkinlikleri")
 }
 
@@ -414,12 +416,9 @@ model Duyuru {
   
   oncelik     String   @default("NORMAL") // NORMAL, ACIL, KRITIK
   
-  // Hedefleme (Null ise herkes görebilir)
-  hedef_birim_id Int?  
-  hedef_birim    Birim? @relation(fields: [hedef_birim_id], references: [id])
-  
-  hedef_rol_id   Int?
-  hedef_rol      Rol?   @relation(fields: [hedef_rol_id], references: [id])
+  // Hedefleme (İlişki tabloları üzerinden yapılacak)
+  hedef_birimler DuyuruHedefBirim[]
+  hedef_roller   DuyuruHedefRol[]
   
   yayinlayan_id Int    
   yayinlayan    Personel @relation("YayinlayanPersonel", fields: [yayinlayan_id], references: [id])
@@ -430,9 +429,30 @@ model Duyuru {
   okunma_loglari DuyuruOkuma[]
 
   @@index([yayin_tarihi])
-  @@index([hedef_birim_id])
-  @@index([hedef_rol_id])
+  deleted_at        DateTime?
   @@map("duyurular")
+}
+
+model DuyuruHedefBirim {
+  duyuru_id Int
+  duyuru    Duyuru @relation(fields: [duyuru_id], references: [id], onDelete: Cascade)
+  
+  birim_id  Int
+  birim     Birim  @relation(fields: [birim_id], references: [id], onDelete: Cascade)
+
+  @@id([duyuru_id, birim_id])
+  @@map("duyuru_hedef_birim")
+}
+
+model DuyuruHedefRol {
+  duyuru_id Int
+  duyuru    Duyuru @relation(fields: [duyuru_id], references: [id], onDelete: Cascade)
+  
+  rol_id    Int
+  rol       Rol    @relation(fields: [rol_id], references: [id], onDelete: Cascade)
+
+  @@id([duyuru_id, rol_id])
+  @@map("duyuru_hedef_rol")
 }
 
 model DuyuruOkuma {

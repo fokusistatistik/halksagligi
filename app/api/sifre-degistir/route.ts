@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         personel_email: user.email,
         islem: 'sifre.degistir.yanlis_eski_sifre',
         tablo: 'personel',
-        kayit_id: user.id,
+        kayit_id: String(user.id),
         aciklama: `Şifre değiştirme başarısız - yanlış eski şifre`,
       });
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       personel_email: user.email,
       islem: 'sifre.degistir',
       tablo: 'personel',
-      kayit_id: user.id,
+      kayit_id: String(user.id),
       aciklama: `Şifre başarıyla değiştirildi${personel.ilk_giris ? ' (İlk giriş)' : ''}`,
     });
 

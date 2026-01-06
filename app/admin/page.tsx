@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Building2, Settings, Shield, Activity, TrendingUp, TrendingDown } from "lucide-react";
+import { Users, Building2, Settings, Shield, Activity, TrendingUp, TrendingDown, Megaphone } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/lib/toast";
 
@@ -50,6 +50,14 @@ export default function AdminPage() {
       icon: Settings,
       href: "/admin/ayarlar",
       renk: "bg-success",
+    },
+    {
+      id: 5,
+      baslik: "Duyuru Yönetimi",
+      aciklama: "Duyuru yayınla ve yönet",
+      icon: Megaphone,
+      href: "/admin/duyurular",
+      renk: "bg-purple-600",
     },
   ];
 
